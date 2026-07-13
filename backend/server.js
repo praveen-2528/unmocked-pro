@@ -741,6 +741,15 @@ io.on('connection', (socket) => {
   });
 });
 
+// Serve frontend static files in production
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
