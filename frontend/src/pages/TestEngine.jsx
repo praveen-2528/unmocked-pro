@@ -856,28 +856,27 @@ export default function TestEngine() {
                                let optLabel = '';
                                
                                if (u.submitted) {
-                                 if (u.submitted.answer === '0') {
-                                   optLabel = 'Skipped';
-                                 } else {
-                                   const optIdx = optionsLetters.indexOf(u.submitted.answer);
-                                   optLabel = `Option ${optIdx + 1}`;
-                                 }
-            
                                  if (isRevealed) {
                                    if (u.submitted.answer === '0') {
+                                     optLabel = 'Skipped';
                                      resultText = 'Skipped';
                                      resultColor = '#758ba8';
                                      borderColor = '#758ba8';
-                                   } else if (u.submitted.answer === currentQuestion.answer) {
-                                     resultText = `Correct (Option ${u.submitted.answer})`;
-                                     resultColor = '#1abc9c';
-                                     borderColor = '#1abc9c';
                                    } else {
-                                     resultText = `Incorrect (Option ${u.submitted.answer})`;
-                                     resultColor = '#e74c3c';
-                                     borderColor = '#e74c3c';
+                                     const optIdx = optionsLetters.indexOf(u.submitted.answer);
+                                     optLabel = `Option ${optIdx + 1}`;
+                                     if (u.submitted.answer === currentQuestion.answer) {
+                                       resultText = `Correct (Option ${u.submitted.answer})`;
+                                       resultColor = '#1abc9c';
+                                       borderColor = '#1abc9c';
+                                     } else {
+                                       resultText = `Incorrect (Option ${u.submitted.answer})`;
+                                       resultColor = '#e74c3c';
+                                       borderColor = '#e74c3c';
+                                     }
                                    }
                                  } else {
+                                   optLabel = 'Hidden';
                                    resultText = 'Submitted';
                                    resultColor = '#3498db';
                                    borderColor = '#3498db';
