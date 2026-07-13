@@ -825,3 +825,4 @@ body {
     border: 1px solid var(--border-color, #e2e8f0);
     padding: 0.5rem;
 }
+.te-grid-btn.status-skipped-grey { background: #94A3B8; border-color: #64748B; color: white; }

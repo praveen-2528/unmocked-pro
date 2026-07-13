@@ -802,10 +802,26 @@ export default function TestEngine() {
                                   {currentSection.questions.map((q, i) => {
                                       const stat = statusMap[q.id];
                                       let cls = '';
-                                      if (stat === 'answered') cls = 'answered';
-                                      else if (stat === 'review') cls = 'marked';
-                                      else if (stat === 'not_answered') cls = 'not-answered';
-                                      else cls = 'not-visited';
+                                      if (isFriendly) {
+                                          if (friendlyRevealed[q.id] === true) {
+                                              const userAns = answers[q.id];
+                                              if (!userAns || userAns === '0') {
+                                                  cls = 'skipped-grey';
+                                              } else if (userAns === q.answer) {
+                                                  cls = 'answered'; // Green
+                                              } else {
+                                                  cls = 'not-answered'; // Red
+                                              }
+                                          } else {
+                                              if (stat === 'answered') cls = 'answered';
+                                              else cls = 'not-visited'; // White
+                                          }
+                                      } else {
+                                          if (stat === 'answered') cls = 'answered';
+                                          else if (stat === 'review') cls = 'marked';
+                                          else if (stat === 'not_answered') cls = 'not-answered';
+                                          else cls = 'not-visited';
+                                      }
 
                                       return (
                                           <button 
