@@ -39,9 +39,7 @@ const io = new Server(server, {
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('UnMocked API is running');
-});
+// Root route removed to allow static frontend to be served
 
 // Authentication Endpoints
 app.post('/api/signup', async (req, res) => {
