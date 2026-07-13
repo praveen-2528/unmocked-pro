@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UnMocked - Testing Platform</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Pixel&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <style>
+      /* Fallback if the Google Font link above doesn't work perfectly for Geist Pixel */
+      @font-face {
+        font-family: 'Geist Pixel';
+        src: url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap');
+      }
+
+      /* Force MathJax display math to behave like inline math inside option buttons */
+      .math-inline-force mjx-container[display="true"] {
+        display: inline !important;
+        margin: 0 !important;
+      }
+    </style>
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true,
+        },
+        chtml: {
+          fontURL: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2'
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script type="module" crossorigin src="/assets/index-C5ZEMOxK.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BeeFgVqX.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
