@@ -43,7 +43,7 @@ export default function StudyRoom() {
         socket.emit('joinStudyGroup', { groupId });
       })
       .catch(err => {
-        navigate('/dashboard');
+        navigate('/home');
       });
 
     socket.on('studyGroupMessage', (msg) => {
@@ -131,7 +131,7 @@ export default function StudyRoom() {
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
       {/* Left Sidebar: Room Details & Members */}
       <div style={{ width: '280px', borderRight: '1px solid var(--glass-border)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
-        <button className="btn btn-glass" onClick={() => navigate('/dashboard')} style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button className="btn btn-glass" onClick={() => navigate('/home')} style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ArrowLeft size={16} /> Back
         </button>
         

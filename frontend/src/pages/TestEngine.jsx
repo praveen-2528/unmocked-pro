@@ -80,18 +80,18 @@ export default function TestEngine() {
         .then(data => {
           if (data.error) {
             alert('Past test not found');
-            navigate('/dashboard');
+            navigate('/home');
             return;
           }
           if (!data.test_data || data.test_data === '{}') {
             alert('Detailed review is not available for this older test.');
-            navigate('/dashboard');
+            navigate('/home');
             return;
           }
           const parsedData = JSON.parse(data.test_data);
           if (!parsedData || !parsedData.sections) {
             alert('Test data is corrupted or incomplete.');
-            navigate('/dashboard');
+            navigate('/home');
             return;
           }
           setTestData(parsedData);
@@ -113,7 +113,7 @@ export default function TestEngine() {
         })
         .catch(err => {
           console.error(err);
-          navigate('/dashboard');
+          navigate('/home');
         });
       return;
     }
@@ -123,7 +123,7 @@ export default function TestEngine() {
     const mode = mpRoom ? mpRoom.mode : (localStorage.getItem('test_game_mode') || 'Solo-Real');
     
     if (!data) {
-      navigate('/dashboard');
+      navigate('/home');
       return;
     }
     
@@ -228,7 +228,7 @@ export default function TestEngine() {
 
       socket.on('roomError', (errMsg) => {
          alert(errMsg);
-         navigate('/dashboard');
+         navigate('/home');
       });
 
       socket.on('friendlyReveal', () => {

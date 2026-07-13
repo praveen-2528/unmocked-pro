@@ -294,9 +294,72 @@ app.get('/api/test-results/detail/:id', (req, res) => {
 
 app.get('/api/test-results/:userId', (req, res) => {
   const userId = req.params.userId;
-  db.all('SELECT * FROM test_results WHERE user_id = ? ORDER BY created_at DESC', [userId], (err, rows) => {
+  db.all('SELECT id, user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, created_at FROM test_results WHERE user_id = ? ORDER BY created_at DESC', [userId], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json(rows);
+  });
+});
+
+// --- User Profile & Settings APIs ---
+app.get('/api/users/:id/profile', (req, res) => {
+  const userId = req.params.id;
+  db.get('SELECT id, name, email, created_at FROM users WHERE id = ?', [userId], (err, user) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    db.get(`SELECT COUNT(*) as total_tests, ROUND(AVG(accuracy), 2) as avg_accuracy, 
+            MAX(score) as best_score, SUM(total_questions) as total_questions_attempted
+            FROM test_results WHERE user_id = ?`, [userId], (err2, stats) => {
+      if (err2) return res.status(500).json({ error: 'Database error' });
+      res.json({ ...user, ...(stats || { total_tests: 0, avg_accuracy: 0, best_score: 0, total_questions_attempted: 0 }) });
+    });
+  });
+});
+
+app.get('/api/leaderboard', (req, res) => {
+  db.all(`SELECT u.id, u.name, COUNT(tr.id) as tests_taken,
+          ROUND(AVG(tr.accuracy), 2) as avg_accuracy,
+          MAX(tr.score) as best_score
+          FROM users u JOIN test_results tr ON u.id = tr.user_id
+          WHERE u.is_admin = 0
+          GROUP BY u.id HAVING tests_taken >= 1
+          ORDER BY avg_accuracy DESC`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows);
+  });
+});
+
+app.put('/api/users/:id/name', (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+  db.run('UPDATE users SET name = ? WHERE id = ?', [name.trim(), req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, name: name.trim() });
+  });
+});
+
+app.put('/api/users/:id/password', (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+  
+  db.get('SELECT password_hash FROM users WHERE id = ?', [req.params.id], (err, user) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    bcrypt.compare(currentPassword, user.password_hash, (err, match) => {
+      if (err) return res.status(500).json({ error: 'Server error' });
+      if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
+      
+      bcrypt.hash(newPassword, 10, (err, hash) => {
+        if (err) return res.status(500).json({ error: 'Server error' });
+        db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, req.params.id], function(err) {
+          if (err) return res.status(500).json({ error: 'Database error' });
+          res.json({ success: true });
+        });
+      });
+    });
   });
 });
 

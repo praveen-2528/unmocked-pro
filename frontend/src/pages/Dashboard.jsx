@@ -367,7 +367,7 @@ export default function Dashboard() {
     
     // Apply the user-edited duration to the test data
     let finalTest = parsedTest;
-    if (friendlyMode === 'Real') {
+    if (friendlyMode === 'Real' && testMode === 'Topic') {
       finalTest = {
         ...parsedTest,
         blueprint: { ...parsedTest.blueprint, total_duration: customDuration },
@@ -855,7 +855,7 @@ export default function Dashboard() {
                     {parsedTest.totalParsed} / {parsedTest.expectedCount} Expected
                   </strong>
                 </div>
-                {friendlyMode === 'Real' && (
+                {friendlyMode === 'Real' && testMode === 'Topic' && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Duration (Minutes):</span>
                     <input 

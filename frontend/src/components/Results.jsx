@@ -69,7 +69,7 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
         <button className="btn btn-glass" onClick={onReviewAnswers} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
           <BookOpen size={18} style={{ marginRight: '8px' }} /> Review Answers
         </button>
-        <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
+        <button className="btn btn-primary" onClick={() => navigate('/home')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
           <Home size={18} style={{ marginRight: '8px' }} /> Return to Dashboard
         </button>
       </div>
@@ -185,7 +185,7 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
           <button className="btn btn-glass" onClick={onReviewAnswers} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
             <BookOpen size={18} style={{ marginRight: '8px' }} /> Review Answers
           </button>
-          <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
+          <button className="btn btn-primary" onClick={() => navigate('/home')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
             <Home size={18} style={{ marginRight: '8px' }} /> Return to Dashboard
           </button>
         </div>

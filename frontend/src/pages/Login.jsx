@@ -31,7 +31,7 @@ export default function Login() {
       if (data.user.is_admin) {
         navigate('/admin');
       } else {
-        navigate('/dashboard');
+        navigate('/home');
       }
     } catch (err) {
       setError(err.message);
