@@ -83,12 +83,17 @@ export default function TestEngine() {
             navigate('/dashboard');
             return;
           }
-          if (!data.test_data) {
+          if (!data.test_data || data.test_data === '{}') {
             alert('Detailed review is not available for this older test.');
             navigate('/dashboard');
             return;
           }
-          const parsedData = JSON.parse(data.test_data || '{}');
+          const parsedData = JSON.parse(data.test_data);
+          if (!parsedData || !parsedData.sections) {
+            alert('Test data is corrupted or incomplete.');
+            navigate('/dashboard');
+            return;
+          }
           setTestData(parsedData);
           setGameMode(data.game_mode);
           setAnswers(JSON.parse(data.answers || '{}'));
@@ -278,9 +283,10 @@ export default function TestEngine() {
   }, [testData, isSubmitted, currentSectionIdx, isFriendly, showInstructions]);
 
   useEffect(() => {
-    if (!isFriendly || showInstructions || isSubmitted) return;
+    if (!isFriendly || showInstructions || isSubmitted || !testData) return;
     
-    const qId = currentQuestion?.id;
+    const sec = testData.sections[currentSectionIdx];
+    const qId = sec?.questions[currentQuestionIdx]?.id;
     if (!qId) return;
 
     // Freeze timer if the user has already submitted the question
@@ -291,7 +297,7 @@ export default function TestEngine() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isFriendly, showInstructions, isSubmitted, questionStartTime, friendlyRevealed, currentQuestion]);
+  }, [isFriendly, showInstructions, isSubmitted, questionStartTime, friendlyRevealed, testData, currentSectionIdx, currentQuestionIdx]);
 
   useEffect(() => {
     if (reviewMode && isFriendly) {
