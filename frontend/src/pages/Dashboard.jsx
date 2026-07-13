@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [targetSubject, setTargetSubject] = useState(''); 
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [customQuestionCount, setCustomQuestionCount] = useState(20);
+  const [customDuration, setCustomDuration] = useState(15);
   const [sectionData, setSectionData] = useState({}); // { "Quant": "...", "English": "..." }
   const [parsedTest, setParsedTest] = useState(null);
   const [error, setError] = useState('');
@@ -254,14 +255,19 @@ export default function Dashboard() {
            throw new Error(`Expected ${customQuestionCount} questions, but parsed ${parsedQs.length}.`);
         }
         
-        const sectionConfig = selectedBp.sections.find(s => s.name === targetSubject) || { name: targetSubject, duration: selectedBp.total_duration };
+        const sectionConfig = { ...(selectedBp.sections.find(s => s.name === targetSubject) || { name: targetSubject, duration: selectedBp.total_duration }) };
+        if (testMode === 'Topic') sectionConfig.duration = customDuration;
         finalSections.push({ ...sectionConfig, questions: parsedQs });
         totalParsed += parsedQs.length;
       }
 
+      const finalBlueprint = testMode === 'Topic' 
+        ? { ...selectedBp, total_duration: customDuration } 
+        : selectedBp;
+
       setParsedTest({
         test_id: 'test_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        blueprint: selectedBp,
+        blueprint: finalBlueprint,
         mode: testMode,
         sections: finalSections,
         totalParsed: totalParsed,
@@ -690,7 +696,7 @@ export default function Dashboard() {
                       {selectedBp.sections.map((sec, i) => (
                         <button 
                           key={i}
-                          onClick={() => { setTargetSubject(sec.name); setSelectedTopics([]); }}
+                          onClick={() => { setTargetSubject(sec.name); setSelectedTopics([]); setCustomDuration(sec.duration || 15); }}
                           style={{
                             padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
                             border: `1px solid ${targetSubject === sec.name ? 'var(--accent-color)' : 'var(--glass-border)'}`,
@@ -735,15 +741,30 @@ export default function Dashboard() {
                             {availableTopics.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No predefined topics for this section.</p>}
                           </div>
 
-                          <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Step 3: Number of Questions</label>
-                          <input 
-                            type="number" 
-                            className="input-field" 
-                            value={customQuestionCount} 
-                            onChange={e => setCustomQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} 
-                            min="1" max="100" 
-                            style={{ width: '150px' }}
-                          />
+                          <div style={{ display: 'flex', gap: '24px' }}>
+                            <div>
+                              <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Step 3: Number of Questions</label>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                value={customQuestionCount} 
+                                onChange={e => setCustomQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} 
+                                min="1" max="100" 
+                                style={{ width: '150px' }}
+                              />
+                            </div>
+                            <div>
+                              <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Step 4: Duration (Minutes)</label>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                value={customDuration} 
+                                onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))} 
+                                min="1" max="300" 
+                                style={{ width: '150px' }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       )
                     })()}
