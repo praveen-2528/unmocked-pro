@@ -752,30 +752,15 @@ export default function Dashboard() {
                             {availableTopics.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No predefined topics for this section.</p>}
                           </div>
 
-                          <div style={{ display: 'flex', gap: '24px' }}>
-                            <div>
-                              <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Step 3: Number of Questions</label>
-                              <input 
-                                type="number" 
-                                className="input-field" 
-                                value={customQuestionCount} 
-                                onChange={e => setCustomQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} 
-                                min="1" max="100" 
-                                style={{ width: '150px' }}
-                              />
-                            </div>
-                            <div>
-                              <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Step 4: Duration (Minutes)</label>
-                              <input 
-                                type="number" 
-                                className="input-field" 
-                                value={customDuration} 
-                                onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))} 
-                                min="1" max="300" 
-                                style={{ width: '150px' }}
-                              />
-                            </div>
-                          </div>
+                          <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Step 3: Number of Questions</label>
+                          <input 
+                            type="number" 
+                            className="input-field" 
+                            value={customQuestionCount} 
+                            onChange={e => setCustomQuestionCount(Math.max(1, parseInt(e.target.value) || 1))} 
+                            min="1" max="100" 
+                            style={{ width: '150px' }}
+                          />
                         </div>
                       )
                     })()}
