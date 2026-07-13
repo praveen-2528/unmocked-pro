@@ -121,7 +121,14 @@ export default function AdminDashboard() {
             <h1 className="geist-pixel" style={{ fontSize: '2rem', marginBottom: '8px', color: 'var(--accent-color)' }}>Admin Panel</h1>
             <p style={{ color: 'var(--text-secondary)' }}>Manage blueprints, users, and security.</p>
           </div>
-          <Link to="/" style={{ textDecoration: 'none' }}><button className="btn btn-glass">Log Out</button></Link>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button className="btn btn-primary" onClick={() => {
+              window.open('/api/admin/database-backup?userId=' + currentUser.id, '_blank');
+            }}>
+              Download DB Backup
+            </button>
+            <Link to="/" style={{ textDecoration: 'none' }}><button className="btn btn-glass">Log Out</button></Link>
+          </div>
         </header>
 
         {/* Navigation */}

@@ -104,7 +104,7 @@ app.post('/api/login', (req, res) => {
 
 // --- Admin Middleware ---
 const isAdmin = (req, res, next) => {
-  const userId = req.headers['x-user-id'];
+  const userId = req.headers['x-user-id'] || req.query.userId;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   db.get('SELECT is_admin FROM users WHERE id = ?', [userId], (err, user) => {
     if (err || !user || !user.is_admin) return res.status(403).json({ error: 'Forbidden' });
@@ -156,6 +156,12 @@ app.delete('/api/admin/blueprints/:id', isAdmin, (req, res) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json({ message: 'Blueprint deleted' });
   });
+});
+
+// Database Backup
+app.get('/api/admin/database-backup', isAdmin, (req, res) => {
+  const dbPath = path.join(__dirname, 'unmocked.db');
+  res.download(dbPath, `unmocked_backup_${new Date().toISOString().split('T')[0]}.db`);
 });
 
 // Users Management
