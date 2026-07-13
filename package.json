@@ -1,0 +1,12 @@
+{
+  "name": "unmocked-platform",
+  "version": "1.0.0",
+  "description": "UnMocked testing platform",
+  "scripts": {
+    "dev:full": "node start-full.js",
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
