@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Trophy, CheckCircle2, Home, BarChart, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export default function Results({ scoreData, testData, gameMode, liveStats, currentUser, testSessionId, onReviewAnswers }) {
+export default function Results({ scoreData, testData, gameMode, liveStats, currentUser, testSessionId, answers, statusMap, onReviewAnswers }) {
   const navigate = useNavigate();
   const isMultiplayer = gameMode.startsWith('Multiplayer');
 
@@ -28,11 +28,14 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
           correct: scoreData.correct,
           incorrect: scoreData.incorrect,
           unattempted: scoreData.unattempted,
-          accuracy: accuracy
+          accuracy: accuracy,
+          answers: answers || {},
+          status_map: statusMap || {},
+          test_data: testData
         })
       }).catch(err => console.error('Failed to save test:', err));
     }
-  }, [currentUser, scoreData, testData, gameMode, testSessionId]);
+  }, [currentUser, scoreData, testData, gameMode, testSessionId, answers, statusMap]);
 
   const renderSoloResults = () => (
     <div className="glass-panel animate-fade-in" style={{ padding: '40px', maxWidth: '600px', width: '100%', textAlign: 'center' }}>

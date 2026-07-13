@@ -14,6 +14,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/test" element={<TestEngine />} />
+      <Route path="/review/:resultId" element={<TestEngine />} />
       <Route path="/study-room/:groupId" element={<StudyRoom />} />
     </Routes>
   );

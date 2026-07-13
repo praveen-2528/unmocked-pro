@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Clock, CheckCircle2, AlertCircle, Bookmark, ChevronRight, XCircle, MessageCircle, BarChart2, Users, FastForward, Send } from 'lucide-react';
 import { socket } from '../socket';
 import Results from '../components/Results';
@@ -7,6 +7,7 @@ import '../TestEngine.css';
 
 export default function TestEngine() {
   const navigate = useNavigate();
+  const { resultId } = useParams();
   const [testData, setTestData] = useState(null);
   
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
@@ -72,6 +73,45 @@ export default function TestEngine() {
   }, [currentQuestionIdx, currentSectionIdx, testData, isSubmitted, friendlyRevealed, showInstructions]);
 
   useEffect(() => {
+    if (resultId) {
+      // Load past test from backend
+      fetch(`/api/test-results/detail/${resultId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            alert('Past test not found');
+            navigate('/dashboard');
+            return;
+          }
+          if (!data.test_data) {
+            alert('Detailed review is not available for this older test.');
+            navigate('/dashboard');
+            return;
+          }
+          const parsedData = JSON.parse(data.test_data || '{}');
+          setTestData(parsedData);
+          setGameMode(data.game_mode);
+          setAnswers(JSON.parse(data.answers || '{}'));
+          setStatusMap(JSON.parse(data.status_map || '{}'));
+          setScoreData({
+            correct: data.correct,
+            incorrect: data.incorrect,
+            unattempted: data.unattempted,
+            total: data.total_questions,
+            marks: data.score,
+            mc: parsedData.blueprint?.marks_correct || 1,
+            mi: parsedData.blueprint?.marks_incorrect || 0.25
+          });
+          setIsSubmitted(false);
+          setReviewMode(true);
+        })
+        .catch(err => {
+          console.error(err);
+          navigate('/dashboard');
+        });
+      return;
+    }
+
     const data = JSON.parse(localStorage.getItem('active_test_data'));
     const mpRoom = JSON.parse(localStorage.getItem('multiplayer_room'));
     const mode = mpRoom ? mpRoom.mode : (localStorage.getItem('test_game_mode') || 'Solo-Real');
@@ -481,6 +521,8 @@ export default function TestEngine() {
         liveStats={liveStats} 
         currentUser={currentUser} 
         testSessionId={testSessionId}
+        answers={answers}
+        statusMap={statusMap}
         onReviewAnswers={() => { setIsSubmitted(false); setReviewMode(true); }}
       />
     );

@@ -262,7 +262,7 @@ app.get('/api/test-session/:sessionId', (req, res) => {
 });
 
 app.post('/api/test-results', (req, res) => {
-  const { user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy } = req.body;
+  const { user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data } = req.body;
   if (!user_id || !exam_name || !game_mode || !test_session_id) return res.status(400).json({ error: 'Missing required fields' });
   
   db.get('SELECT id FROM test_results WHERE test_session_id = ?', [test_session_id], (err, row) => {
@@ -270,8 +270,8 @@ app.post('/api/test-results', (req, res) => {
     if (row) return res.status(200).json({ message: 'Result already saved', id: row.id });
 
     db.run(
-      'INSERT INTO test_results (user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy],
+      'INSERT INTO test_results (user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null],
       function(err) {
         if (err) return res.status(500).json({ error: 'Database error' });
         
@@ -281,6 +281,14 @@ app.post('/api/test-results', (req, res) => {
         res.status(201).json({ message: 'Test result saved', id: this.lastID });
       }
     );
+  });
+});
+
+app.get('/api/test-results/detail/:id', (req, res) => {
+  db.get('SELECT * FROM test_results WHERE id = ?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!row) return res.status(404).json({ error: 'Test not found' });
+    res.json(row);
   });
 });
 

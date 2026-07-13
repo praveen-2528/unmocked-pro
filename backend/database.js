@@ -125,15 +125,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
         incorrect INTEGER NOT NULL,
         unattempted INTEGER NOT NULL,
         accuracy REAL NOT NULL,
+        answers TEXT,
+        status_map TEXT,
+        test_data TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
 
-    // In case the table already exists from a previous migration, try to add the column safely
-    db.run('ALTER TABLE test_results ADD COLUMN test_session_id TEXT', (err) => {
-      // Ignore error if column already exists
-    });
+    // In case the table already exists from a previous migration, try to add the columns safely
+    db.run('ALTER TABLE test_results ADD COLUMN test_session_id TEXT', (err) => {});
+    db.run('ALTER TABLE test_results ADD COLUMN answers TEXT', (err) => {});
+    db.run('ALTER TABLE test_results ADD COLUMN status_map TEXT', (err) => {});
+    db.run('ALTER TABLE test_results ADD COLUMN test_data TEXT', (err) => {});
 
     db.run(`
       CREATE TABLE IF NOT EXISTS active_test_sessions (

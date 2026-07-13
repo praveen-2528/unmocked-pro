@@ -571,13 +571,18 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }}>
                     {pastTests.map(test => (
                       <div key={test.id} style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <strong style={{ color: 'var(--accent-color)' }}>{test.exam_name}</strong>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{new Date(test.created_at).toLocaleDateString()}</span>
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span>{test.game_mode.replace('-', ' ')}</span>
-                          <span>Score: {test.score.toFixed(2)} | Acc: {test.accuracy.toFixed(0)}%</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                             <span>Score: {test.score.toFixed(2)} | Acc: {test.accuracy.toFixed(0)}%</span>
+                             <button className="btn btn-glass" style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => navigate(`/review/${test.id}`)}>
+                               <BookOpen size={14} /> Review
+                             </button>
+                          </div>
                         </div>
                       </div>
                     ))}
