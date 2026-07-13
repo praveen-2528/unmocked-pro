@@ -43,6 +43,7 @@ export default function TestEngine() {
   const [friendlyWaitingData, setFriendlyWaitingData] = useState({ submitted: 0, total: 0 });
   const [rightPanelTab, setRightPanelTab] = useState('status'); // 'status' or 'grid'
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [friendlyTimer, setFriendlyTimer] = useState(0);
   const [roomStatusData, setRoomStatusData] = useState([]);
   const messagesEndRef = useRef(null);
   
@@ -232,6 +233,22 @@ export default function TestEngine() {
     return () => clearInterval(timer);
   }, [testData, isSubmitted, currentSectionIdx, isFriendly, showInstructions]);
 
+  useEffect(() => {
+    if (!isFriendly || showInstructions || isSubmitted) return;
+    
+    const qId = currentQuestion?.id;
+    if (!qId) return;
+
+    // Freeze timer if the user has already submitted the question
+    if (friendlyRevealed[qId]) return;
+
+    const interval = setInterval(() => {
+      setFriendlyTimer(Math.round((Date.now() - questionStartTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isFriendly, showInstructions, isSubmitted, questionStartTime, friendlyRevealed, currentQuestion]);
+
   const handleTimeUp = () => {
     if (testData.blueprint.has_sectional_timing) {
       if (currentSectionIdx < testData.sections.length - 1) {
@@ -335,6 +352,7 @@ export default function TestEngine() {
       }
     }
     setQuestionStartTime(Date.now());
+    setFriendlyTimer(0);
   };
 
   const handleSaveNext = () => {
@@ -559,18 +577,18 @@ export default function TestEngine() {
           </span>
         </div>
         <div className="te-header-right">
-          {!isFriendly && (
-             <div className="te-timer-box" style={{ display: 'flex', alignItems: 'center', marginRight: '0.5rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid rgba(231, 76, 60, 0.3)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <span className="time-label" style={{ color: '#e74c3c' }}>Time Left</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="time-value" style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-                            {formatTime(timeLeft)}
-                        </span>
-                    </div>
-                </div>
-             </div>
-          )}
+          <div className="te-timer-box" style={{ display: 'flex', alignItems: 'center', marginRight: '0.5rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid rgba(231, 76, 60, 0.3)' }}>
+              <div className="te-timer">
+                  <span className="time-label" style={{ color: '#e74c3c' }}>
+                      {isFriendly ? 'Time Elapsed' : 'Time Left'}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="time-value" style={{ color: '#e74c3c', fontWeight: 'bold' }}>
+                          {formatTime(isFriendly ? friendlyTimer : timeLeft)}
+                      </span>
+                  </div>
+              </div>
+          </div>
           {isMultiplayer && (
              <button className="te-btn" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', marginRight: '1rem', background: 'var(--c-primary)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }} onClick={() => setShowLiveStats(!showLiveStats)}>Live Progress</button>
           )}
