@@ -44,7 +44,7 @@ export default function Leaderboard() {
     <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       <Navbar />
       
-      <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px' }}>
+      <main style={{ maxWidth: '1000px', margin: '80px auto 60px', padding: '0 20px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <h1 className="geist-pixel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '2.5rem', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
             <Trophy size={40} color="#fbbf24" /> Global Leaderboard

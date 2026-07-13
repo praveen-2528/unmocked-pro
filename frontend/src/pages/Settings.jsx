@@ -75,8 +75,8 @@ export default function Settings() {
     <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       <Navbar />
 
-      <main style={{ maxWidth: '700px', margin: '40px auto', padding: '0 20px' }}>
-        <h1 className="geist-pixel" style={{ color: 'var(--text-primary)', marginBottom: '32px' }}>
+      <main style={{ maxWidth: '700px', margin: '80px auto 60px', padding: '0 20px' }}>
+        <h1 className="geist-pixel" style={{ color: 'var(--text-primary)', marginBottom: '40px' }}>
           Account Settings
         </h1>
 

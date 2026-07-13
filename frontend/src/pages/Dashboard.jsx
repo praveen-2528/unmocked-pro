@@ -407,7 +407,7 @@ export default function Dashboard() {
     ];
 
     return (
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', alignItems: 'center', overflowX: 'auto', paddingBottom: '8px' }} className="animate-fade-in">
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '40px', alignItems: 'center', overflowX: 'auto', paddingBottom: '8px' }} className="animate-fade-in">
         {stages.map((st, i) => (
           <div key={st.num} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= st.num ? 'var(--accent-color)' : 'var(--text-secondary)' }}>
             <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: step >= st.num ? 'var(--accent-color)' : 'var(--glass-border)', color: step >= st.num ? '#000' : 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>{st.num}</span>
@@ -495,7 +495,7 @@ export default function Dashboard() {
   return (
     <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       <Navbar />
-      <main style={{ padding: '40px 20px' }}>
+      <main style={{ padding: '80px 20px 60px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* Header */}
@@ -519,7 +519,7 @@ export default function Dashboard() {
         {step === 0 && (
           <div className="animate-fade-in">
 
-            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', marginBottom: '32px' }}>
+            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', marginBottom: '40px' }}>
               <BookOpen size={48} style={{ color: 'var(--accent-color)', margin: '0 auto 24px auto' }} />
               <h2 className="geist-pixel" style={{ fontSize: '1.8rem', marginBottom: '16px' }}>Ready to practice?</h2>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px auto' }}>
@@ -556,7 +556,7 @@ export default function Dashboard() {
             </div>
 
             {/* Study Rooms Section */}
-            <div className="glass-panel" style={{ padding: '32px', marginBottom: '32px' }}>
+            <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h2 className="geist-pixel" style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>My Study Rooms</h2>
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -663,7 +663,7 @@ export default function Dashboard() {
               <button className="btn btn-glass" onClick={() => setStep(1)}>Back</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '40px' }}>
               <div className="glass-card" style={{ padding: '20px', cursor: 'pointer', borderColor: testMode === 'Full' ? 'var(--accent-color)' : 'var(--glass-border)' }} onClick={() => { setTestMode('Full'); setTargetSubject(''); }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '4px' }}>Full Mock Exam</h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Generate separate prompts for all sections.</p>
@@ -816,7 +816,7 @@ export default function Dashboard() {
             <div className="glass-panel" style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
               <h2 className="geist-pixel" style={{ fontSize: '2rem', marginBottom: '24px', textAlign: 'center' }}>Select Game Mode</h2>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px' }}>
                 <div>
                   <label className="input-label" style={{ marginBottom: '12px', display: 'block' }}>Play Type</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -846,7 +846,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '12px', marginBottom: '32px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '12px', marginBottom: '40px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Exam:</span>
                   <strong style={{ color: 'var(--text-primary)' }}>{parsedTest.blueprint.exam_name}</strong>
@@ -893,7 +893,7 @@ export default function Dashboard() {
           <div className="animate-fade-in">
             <div className="glass-panel" style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
               <h2 className="geist-pixel" style={{ fontSize: '2.5rem', marginBottom: '8px', color: 'var(--accent-color)' }}>{lobbyData.code}</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Share this 6-digit Room Code with your friends.</p>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>Share this 6-digit Room Code with your friends.</p>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px' }}>
                  <div>

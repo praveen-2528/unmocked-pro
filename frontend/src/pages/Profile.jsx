@@ -116,9 +116,9 @@ export default function Profile() {
     <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       <Navbar />
 
-      <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
+      <main style={{ maxWidth: '1200px', margin: '80px auto 60px', padding: '0 20px' }}>
         {/* Header Section */}
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '32px', marginBottom: '32px' }}>
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '32px', marginBottom: '40px' }}>
           <div style={{ width: '100px', height: '100px', borderRadius: '50%', backgroundColor: 'var(--accent-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', fontWeight: 'bold', flexShrink: 0 }}>
             {profileData.name.charAt(0).toUpperCase()}
           </div>
@@ -152,7 +152,7 @@ export default function Profile() {
 
         {/* Charts Section */}
         {history.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '24px', marginBottom: '40px' }}>
             <div className="glass-panel" style={{ height: '350px' }}>
               <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-primary)' }}>Accuracy Over Time</h3>
               <div style={{ height: '280px' }}><Line data={accuracyData} options={chartOptions} /></div>
@@ -171,7 +171,7 @@ export default function Profile() {
             </div>
           </div>
         ) : (
-          <div className="glass-panel" style={{ textAlign: 'center', padding: '40px', marginBottom: '32px' }}>
+          <div className="glass-panel" style={{ textAlign: 'center', padding: '40px', marginBottom: '40px' }}>
             <p style={{ color: 'var(--text-secondary)' }}>No tests taken yet. Analytics will appear here.</p>
           </div>
         )}
