@@ -52,19 +52,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
         db.get('SELECT COUNT(*) as count FROM blueprints', (err, row) => {
           if (row && row.count === 0) {
             const seedExams = [
-              { id: 'SSC-CGL-T1', name: 'SSC CGL Tier 1', duration: 60, options: 4, sectional: 0, marks_correct: 2.0, marks_incorrect: 0.5, sections: [
+              { id: 'SSC-CGL-T1', name: 'SSC CGL Tier 1', duration: 60, options: 4, sectional: 1, marks_correct: 2.0, marks_incorrect: 0.5, sections: [
                 { name: 'General Intelligence', questions: 25, duration: 15, topics: ['Analogies', 'Blood Relations', 'Syllogism', 'Coding-Decoding', 'Number Series', 'Venn Diagrams', 'Non-Verbal Reasoning'] },
                 { name: 'General Awareness', questions: 25, duration: 15, topics: ['Current Affairs', 'History', 'Geography', 'Indian Polity', 'Economics', 'General Science', 'Static GK'] },
                 { name: 'Quantitative Aptitude', questions: 25, duration: 15, topics: ['Algebra', 'Geometry', 'Trigonometry', 'Data Interpretation', 'Profit and Loss', 'Time and Work', 'Percentages'] },
                 { name: 'English Comprehension', questions: 25, duration: 15, topics: ['Reading Comprehension', 'Cloze Test', 'Error Spotting', 'Sentence Improvement', 'Para Jumbles', 'Idioms & Phrases', 'Synonyms & Antonyms'] }
               ]},
-              { id: 'SSC-CHSL-T1', name: 'SSC CHSL Tier 1', duration: 60, options: 4, sectional: 0, marks_correct: 2.0, marks_incorrect: 0.5, sections: [
+              { id: 'SSC-CHSL-T1', name: 'SSC CHSL Tier 1', duration: 60, options: 4, sectional: 1, marks_correct: 2.0, marks_incorrect: 0.5, sections: [
                 { name: 'English Language', questions: 25, duration: 15, topics: ['Reading Comprehension', 'Cloze Test', 'Error Spotting', 'Sentence Improvement', 'Para Jumbles', 'Idioms & Phrases'] },
                 { name: 'General Intelligence', questions: 25, duration: 15, topics: ['Analogies', 'Blood Relations', 'Syllogism', 'Coding-Decoding', 'Number Series'] },
                 { name: 'Quantitative Aptitude', questions: 25, duration: 15, topics: ['Algebra', 'Geometry', 'Trigonometry', 'Data Interpretation', 'Profit and Loss', 'Time and Work'] },
                 { name: 'General Awareness', questions: 25, duration: 15, topics: ['Current Affairs', 'History', 'Geography', 'Indian Polity', 'Economics', 'General Science'] }
               ]},
-              { id: 'SSC-STENO', name: 'SSC Stenographer Grade C & D', duration: 120, options: 4, sectional: 0, marks_correct: 1.0, marks_incorrect: 0.25, sections: [
+              { id: 'SSC-STENO', name: 'SSC Stenographer Grade C & D', duration: 120, options: 4, sectional: 1, marks_correct: 1.0, marks_incorrect: 0.25, sections: [
                 { name: 'General Intelligence & Reasoning', questions: 50, duration: 30, topics: ['Analogies', 'Blood Relations', 'Syllogism', 'Coding-Decoding', 'Number Series', 'Direction Sense', 'Venn Diagrams'] },
                 { name: 'General Awareness', questions: 50, duration: 30, topics: ['Current Affairs', 'History', 'Geography', 'Indian Polity', 'Economics', 'General Science', 'Static GK'] },
                 { name: 'English Language & Comprehension', questions: 100, duration: 60, topics: ['Reading Comprehension', 'Cloze Test', 'Error Spotting', 'Sentence Improvement', 'Para Jumbles', 'Active & Passive Voice'] }
