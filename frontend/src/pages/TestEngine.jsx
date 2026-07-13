@@ -17,6 +17,7 @@ export default function TestEngine() {
   
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [instructionsAccepted, setInstructionsAccepted] = useState(false);
   const [scoreData, setScoreData] = useState(null);
@@ -465,7 +466,7 @@ export default function TestEngine() {
 
   if (!testData) return <div style={{ color: '#fff', padding: '40px' }}>Loading test engine...</div>;
 
-  if (isSubmitted) {
+  if (isSubmitted && !reviewMode) {
     return (
       <Results 
         scoreData={scoreData} 
@@ -474,6 +475,7 @@ export default function TestEngine() {
         liveStats={liveStats} 
         currentUser={currentUser} 
         testSessionId={testSessionId}
+        onReviewAnswers={() => { setIsSubmitted(false); setReviewMode(true); }}
       />
     );
   }
@@ -580,14 +582,14 @@ export default function TestEngine() {
           </span>
         </div>
         <div className="te-header-right">
-          <div className="te-timer-box" style={{ display: 'flex', alignItems: 'center', marginRight: '0.5rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid rgba(231, 76, 60, 0.3)' }}>
+          <div className="te-timer-box" style={{ display: 'flex', alignItems: 'center', marginRight: '0.5rem', background: reviewMode ? 'rgba(52, 152, 219, 0.1)' : 'rgba(231, 76, 60, 0.1)', border: reviewMode ? '1px solid rgba(52, 152, 219, 0.3)' : '1px solid rgba(231, 76, 60, 0.3)' }}>
               <div className="te-timer">
-                  <span className="time-label" style={{ color: '#e74c3c' }}>
-                      {isFriendly ? 'Time Elapsed' : 'Time Left'}
+                  <span className="time-label" style={{ color: reviewMode ? 'var(--text-muted)' : '#e74c3c' }}>
+                      {reviewMode ? 'Post-Test' : isFriendly ? 'Time Elapsed' : 'Time Left'}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className="time-value" style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-                          {formatTime(isFriendly ? friendlyTimer : timeLeft)}
+                      <span className="time-value" style={{ color: reviewMode ? 'var(--accent-color)' : '#e74c3c', fontWeight: 'bold' }}>
+                          {reviewMode ? 'Review Mode' : formatTime(isFriendly ? friendlyTimer : timeLeft)}
                       </span>
                   </div>
               </div>
@@ -640,7 +642,12 @@ export default function TestEngine() {
                   })}
               </div>
               <div className="te-buttons">
-                  {!isFriendly ? (
+                  {reviewMode ? (
+                      <>
+                          <button className="te-btn submit" onClick={advanceQuestion}>Next Question</button>
+                          <button className="te-btn save" onClick={() => { setIsSubmitted(true); setReviewMode(false); }}>Back to Results</button>
+                      </>
+                  ) : !isFriendly ? (
                       <>
                           <button className="te-btn" onClick={handleMarkReview}>Mark for Review & Next</button>
                           <button className="te-btn" onClick={handleClear}>Clear Response</button>
@@ -739,7 +746,7 @@ export default function TestEngine() {
                       {currentQuestion.options.map((opt, i) => {
                           const letter = optionsLetters[i];
                           const isSelected = answers[currentQuestion.id] === letter;
-                          const isRevealed = friendlyRevealed[currentQuestion.id] === true;
+                          const isRevealed = friendlyRevealed[currentQuestion.id] === true || reviewMode;
                           const isCorrect = isRevealed && letter === currentQuestion.answer;
                           const isWrongSelected = isRevealed && isSelected && letter !== currentQuestion.answer;
                           const isWaiting = friendlyRevealed[currentQuestion.id] === 'waiting';
@@ -755,7 +762,7 @@ export default function TestEngine() {
                                   key={i}
                                   className={optionClass}
                                   onClick={() => {
-                                      if (!isRevealed && !isWaiting) setAnswers(prev => ({ ...prev, [currentQuestion.id]: letter }));
+                                      if (!isRevealed && !isWaiting && !reviewMode) setAnswers(prev => ({ ...prev, [currentQuestion.id]: letter }));
                                   }}
                               >
                                   <input type="radio" className="te-option-radio" checked={isSelected} readOnly />
@@ -767,13 +774,13 @@ export default function TestEngine() {
                       })}
                   </div>
 
-                  {friendlyRevealed[currentQuestion.id] === 'waiting' && (
+                  {friendlyRevealed[currentQuestion.id] === 'waiting' && !reviewMode && (
                      <div style={{ marginTop: '24px', padding: '16px', background: '#eef3f7', border: '1px solid #758ba8', borderRadius: '4px', textAlign: 'center', color: '#4b5e78', fontWeight: 'bold' }}>
                        Waiting for other players to submit... ({friendlyWaitingData.submitted} / {friendlyWaitingData.total})
                      </div>
                   )}
 
-                  {friendlyRevealed[currentQuestion.id] === true && (
+                  {(friendlyRevealed[currentQuestion.id] === true || reviewMode) && (
                      <div className="animate-fade-in" style={{ marginTop: '2rem', padding: '1rem', background: 'var(--c-accent1)', color: 'white', borderRadius: '4px' }}>
                        <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                          <CheckCircle2 size={18} /> Explanation
@@ -805,20 +812,18 @@ export default function TestEngine() {
                                   {currentSection.questions.map((q, i) => {
                                       const stat = statusMap[q.id];
                                       let cls = '';
-                                      if (isFriendly) {
-                                          if (friendlyRevealed[q.id] === true) {
-                                              const userAns = answers[q.id];
-                                              if (!userAns || userAns === '0') {
-                                                  cls = 'skipped-grey';
-                                              } else if (userAns === q.answer) {
-                                                  cls = 'answered'; // Green
-                                              } else {
-                                                  cls = 'not-answered'; // Red
-                                              }
+                                      if (reviewMode || (isFriendly && friendlyRevealed[q.id] === true)) {
+                                          const userAns = answers[q.id];
+                                          if (!userAns || userAns === '0') {
+                                              cls = 'skipped-grey';
+                                          } else if (userAns === q.answer) {
+                                              cls = 'answered'; // Green
                                           } else {
-                                              if (stat === 'answered') cls = 'answered';
-                                              else cls = 'not-visited'; // White
+                                              cls = 'not-answered'; // Red
                                           }
+                                      } else if (isFriendly) {
+                                          if (stat === 'answered') cls = 'answered';
+                                          else cls = 'not-visited'; // White
                                       } else {
                                           if (stat === 'answered') cls = 'answered';
                                           else if (stat === 'review') cls = 'marked';

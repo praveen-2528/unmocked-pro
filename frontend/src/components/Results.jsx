@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { Trophy, CheckCircle2, Home, BarChart } from 'lucide-react';
+import { Trophy, CheckCircle2, Home, BarChart, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export default function Results({ scoreData, testData, gameMode, liveStats, currentUser, testSessionId }) {
+export default function Results({ scoreData, testData, gameMode, liveStats, currentUser, testSessionId, onReviewAnswers }) {
   const navigate = useNavigate();
   const isMultiplayer = gameMode.startsWith('Multiplayer');
 
@@ -62,9 +62,14 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'gray' }}>Unattempted:</span> <strong>{scoreData.unattempted}</strong></div>
       </div>
 
-      <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
-        <Home size={18} style={{ marginRight: '8px' }} /> Return to Dashboard
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+        <button className="btn btn-glass" onClick={onReviewAnswers} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
+          <BookOpen size={18} style={{ marginRight: '8px' }} /> Review Answers
+        </button>
+        <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
+          <Home size={18} style={{ marginRight: '8px' }} /> Return to Dashboard
+        </button>
+      </div>
     </div>
   );
 
@@ -173,7 +178,12 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
           </table>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '32px' }}>
+          {scoreData && (
+            <button className="btn btn-glass" onClick={onReviewAnswers} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
+              <BookOpen size={18} style={{ marginRight: '8px' }} /> Review Answers
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => navigate('/dashboard')} style={{ padding: '12px 32px', fontSize: '1.1rem' }}>
             <Home size={18} style={{ marginRight: '8px' }} /> Return to Dashboard
           </button>
