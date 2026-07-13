@@ -69,17 +69,19 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
   );
 
   const renderMultiplayerResults = () => {
-    // Inject current user's final score into the pool if they aren't already updated perfectly
+    // Inject current user's final score into the pool if they actually took the test
     const finalStats = { ...liveStats };
-    finalStats[currentUser.id] = {
-      name: currentUser.name,
-      attempted: scoreData.correct + scoreData.incorrect,
-      skipped: scoreData.unattempted,
-      right: scoreData.correct,
-      wrong: scoreData.incorrect,
-      accuracy: scoreData.total > 0 ? ((scoreData.correct / (scoreData.correct + scoreData.incorrect)) * 100) : 0,
-      score: scoreData.marks
-    };
+    if (scoreData) {
+      finalStats[currentUser.id] = {
+        name: currentUser.name,
+        attempted: scoreData.correct + scoreData.incorrect,
+        skipped: scoreData.unattempted,
+        right: scoreData.correct,
+        wrong: scoreData.incorrect,
+        accuracy: scoreData.total > 0 ? ((scoreData.correct / (scoreData.correct + scoreData.incorrect)) * 100) : 0,
+        score: scoreData.marks
+      };
+    }
 
     const players = Object.values(finalStats).map(st => {
       const right = st.right || 0;

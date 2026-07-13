@@ -87,6 +87,9 @@ export default function TestEngine() {
       setLiveStats(mpRoom.stats || {});
       setTestSessionId(mpRoom.code + '-' + currentUser.id); // Permanently unique to this user in this room
       socket.emit('joinRoom', { code: mpRoom.code, user: currentUser });
+      if (mpRoom.state === 'FINISHED') {
+        setIsSubmitted(true);
+      }
     } else {
       setTestSessionId(localStorage.getItem('current_test_session_id') || 'solo-' + Date.now());
     }

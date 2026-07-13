@@ -596,6 +596,25 @@ io.on('connection', (socket) => {
     if (rooms[code] && rooms[code].stats[userId]) {
       rooms[code].stats[userId] = { ...rooms[code].stats[userId], ...statsUpdate };
       io.to(code).emit('statsUpdated', rooms[code].stats);
+
+      if (statsUpdate.finished && rooms[code].state !== 'FINISHED') {
+         const allConnectedIds = [rooms[code].host, ...rooms[code].guests]
+            .filter(u => u.connected)
+            .map(u => u.id);
+         
+         const allFinished = allConnectedIds.every(id => rooms[code].stats[id]?.finished);
+         if (allConnectedIds.length > 0 && allFinished) {
+            rooms[code].state = 'FINISHED';
+            io.to(code).emit('testFinished');
+            
+            setTimeout(() => {
+               if (rooms[code] && rooms[code].state === 'FINISHED') {
+                  io.to(code).emit('roomClosed');
+                  delete rooms[code];
+               }
+            }, 5 * 60 * 1000);
+         }
+      }
     }
   });
 
@@ -674,9 +693,16 @@ io.on('connection', (socket) => {
 
   socket.on('finishTest', ({ code, userId }) => {
     if (rooms[code]) {
-      if (rooms[code].host.id === userId) {
+      if (rooms[code].host.id === userId && rooms[code].state !== 'FINISHED') {
         rooms[code].state = 'FINISHED';
         io.to(code).emit('testFinished');
+        
+        setTimeout(() => {
+           if (rooms[code] && rooms[code].state === 'FINISHED') {
+              io.to(code).emit('roomClosed');
+              delete rooms[code];
+           }
+        }, 5 * 60 * 1000);
       }
     }
   });
