@@ -109,6 +109,7 @@ export default function TestEngine() {
           });
           setIsSubmitted(false);
           setReviewMode(true);
+          setShowInstructions(false);
         })
         .catch(err => {
           console.error(err);
@@ -268,7 +269,7 @@ export default function TestEngine() {
   }, [chatMessages, showChat]);
 
   useEffect(() => {
-    if (isSubmitted || !testData || isFriendly || showInstructions) return;
+    if (isSubmitted || reviewMode || !testData || isFriendly || showInstructions) return;
     
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -280,7 +281,7 @@ export default function TestEngine() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [testData, isSubmitted, currentSectionIdx, isFriendly, showInstructions]);
+  }, [testData, isSubmitted, currentSectionIdx, isFriendly, showInstructions, reviewMode]);
 
   useEffect(() => {
     if (!isFriendly || showInstructions || isSubmitted || !testData) return;
