@@ -82,7 +82,9 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
     };
 
     const players = Object.values(finalStats).map(st => {
-      const score = st.score !== undefined ? st.score : (st.right * mc) - (st.wrong * mi);
+      const right = st.right || 0;
+      const wrong = st.wrong || 0;
+      const score = st.score !== undefined ? st.score : (right * mc) - (wrong * mi);
       return { ...st, score };
     }).sort((a, b) => b.score - a.score);
 

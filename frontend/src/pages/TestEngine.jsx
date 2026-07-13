@@ -271,6 +271,23 @@ export default function TestEngine() {
     const mc = testData.blueprint.marks_correct || 1.0;
     const mi = testData.blueprint.marks_incorrect || 0.25;
     const marks = (correct * mc) - (incorrect * mi);
+    
+    if (isMultiplayer) {
+      socket.emit('submitStats', { 
+        code: room.code, 
+        userId: currentUser.id, 
+        statsUpdate: { 
+          attempted: correct + incorrect, 
+          skipped: unattempted, 
+          right: correct, 
+          wrong: incorrect, 
+          accuracy: total > 0 ? ((correct / (correct + incorrect)) * 100) : 0,
+          score: marks,
+          finished: true 
+        } 
+      });
+    }
+
     setScoreData({ correct, incorrect, unattempted, total, marks, mc, mi });
     setIsSubmitted(true);
   };
