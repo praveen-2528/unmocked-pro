@@ -306,6 +306,25 @@ export default function TestEngine() {
     }
   }, [reviewMode, isFriendly]);
 
+  const submitSection = () => {
+    if (testData.blueprint.has_sectional_timing) {
+      if (currentSectionIdx < testData.sections.length - 1) {
+        if (window.confirm(`Are you sure you want to submit the ${testData.sections[currentSectionIdx].name} section? You cannot return to it.`)) {
+          setCurrentSectionIdx(prev => {
+            const nextIdx = prev + 1;
+            setTimeLeft((testData.sections[nextIdx].duration || 15) * 60);
+            setCurrentQuestionIdx(0);
+            return nextIdx;
+          });
+        }
+      } else {
+        if (window.confirm("This is the last section. Are you sure you want to submit the entire test?")) {
+          submitTest();
+        }
+      }
+    }
+  };
+
   const handleTimeUp = () => {
     if (testData.blueprint.has_sectional_timing) {
       if (currentSectionIdx < testData.sections.length - 1) {
@@ -778,8 +797,17 @@ export default function TestEngine() {
                               )}
                           </div>
                       ) : (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                               <span style={{ fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-muted)' }}>Pause</span>
+                              {testData?.blueprint?.has_sectional_timing && !reviewMode && !isFriendly && (
+                                <button 
+                                  className="te-btn save" 
+                                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: '#e67e22', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                  onClick={submitSection}
+                                >
+                                  Submit Section
+                                </button>
+                              )}
                               <button className="te-btn save" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: '#34495e', color: 'white' }}>Save & Exit</button>
                           </div>
                       )}
