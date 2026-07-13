@@ -273,6 +273,7 @@ export default function Dashboard() {
         totalParsed: totalParsed,
         expectedCount: getExpectedCount()
       });
+      if (testMode !== 'Topic') setCustomDuration(finalBlueprint.total_duration || 60);
       setStep(4);
 
     } catch (err) {
@@ -364,14 +365,24 @@ export default function Dashboard() {
   const handleLaunchOrHost = () => {
     const finalMode = `${playMode}-${friendlyMode}`; // 'Solo-Real', 'Solo-Friendly', 'Multiplayer-Real', 'Multiplayer-Friendly'
     
+    // Apply the user-edited duration to the test data
+    let finalTest = parsedTest;
+    if (friendlyMode === 'Real') {
+      finalTest = {
+        ...parsedTest,
+        blueprint: { ...parsedTest.blueprint, total_duration: customDuration },
+        sections: parsedTest.sections.map(sec => ({ ...sec, duration: customDuration }))
+      };
+    }
+
     if (playMode === 'Solo') {
-      localStorage.setItem('active_test_data', JSON.stringify(parsedTest));
+      localStorage.setItem('active_test_data', JSON.stringify(finalTest));
       localStorage.setItem('test_game_mode', finalMode);
       localStorage.setItem('current_test_session_id', 'solo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5));
       localStorage.removeItem('multiplayer_room');
       navigate('/test');
     } else {
-      socket.emit('createRoom', { user: currentUser, testData: parsedTest, mode: finalMode });
+      socket.emit('createRoom', { user: currentUser, testData: finalTest, mode: finalMode });
       socket.once('roomCreated', (room) => {
         setLobbyData(room);
         setStep(5);
@@ -853,12 +864,25 @@ export default function Dashboard() {
                   <span style={{ color: 'var(--text-secondary)' }}>Exam:</span>
                   <strong style={{ color: 'var(--text-primary)' }}>{parsedTest.blueprint.exam_name}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Parsed Questions:</span>
                   <strong style={{ color: parsedTest.totalParsed === parsedTest.expectedCount ? 'var(--accent-color)' : 'var(--warning-color)' }}>
                     {parsedTest.totalParsed} / {parsedTest.expectedCount} Expected
                   </strong>
                 </div>
+                {friendlyMode === 'Real' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Duration (Minutes):</span>
+                    <input 
+                      type="number" 
+                      className="input-field" 
+                      value={customDuration} 
+                      onChange={e => setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))} 
+                      min="1" max="300" 
+                      style={{ width: '100px', textAlign: 'center', padding: '6px 10px', fontSize: '1rem', fontWeight: 'bold' }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
