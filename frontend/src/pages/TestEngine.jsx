@@ -253,6 +253,12 @@ export default function TestEngine() {
     return () => clearInterval(interval);
   }, [isFriendly, showInstructions, isSubmitted, questionStartTime, friendlyRevealed, currentQuestion]);
 
+  useEffect(() => {
+    if (reviewMode && isFriendly) {
+      setRightPanelTab('grid');
+    }
+  }, [reviewMode, isFriendly]);
+
   const handleTimeUp = () => {
     if (testData.blueprint.has_sectional_timing) {
       if (currentSectionIdx < testData.sections.length - 1) {
