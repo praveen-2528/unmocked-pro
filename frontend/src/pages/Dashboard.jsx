@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, FileText, CheckCircle2, ChevronRight, Play, Copy, BookOpen, AlertCircle, Edit2, Check } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
+import Navbar from '../components/Navbar';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -492,8 +493,10 @@ export default function Dashboard() {
   };
 
   return (
-    <main style={{ minHeight: '100vh', padding: '40px 20px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
+      <Navbar />
+      <main style={{ padding: '40px 20px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }} className="animate-fade-in">
@@ -507,7 +510,6 @@ export default function Dashboard() {
             {currentUser.is_admin && (
               <Link to="/admin" style={{ textDecoration: 'none' }}><button className="btn btn-primary">Admin Panel</button></Link>
             )}
-            <button className="btn btn-glass" onClick={() => navigate('/')}>Log Out</button>
           </div>
         </header>
 
@@ -1022,7 +1024,8 @@ export default function Dashboard() {
           </div>
         )}
 
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('unmocked_user'));
+    if (user && user.email) {
+      navigate(user.is_admin ? '/admin' : '/home');
+    }
+  }, [navigate]);
+
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
