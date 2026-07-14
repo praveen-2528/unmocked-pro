@@ -162,7 +162,10 @@ export default function AdminDashboard() {
             }}>
               Download DB Backup
             </button>
-            <Link to="/" style={{ textDecoration: 'none' }}><button className="btn btn-glass">Log Out</button></Link>
+            <button className="btn btn-glass" onClick={() => {
+              localStorage.removeItem('unmocked_user');
+              navigate('/');
+            }}>Log Out</button>
           </div>
         </header>
 
