@@ -377,13 +377,13 @@ export default function AdminDashboard() {
                 <div key={code} className="glass-card" style={{ padding: '20px', borderLeft: '4px solid var(--accent-color)' }}>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>Room: {code}</h3>
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                    <strong>Exam:</strong> {room.exam_name}
+                    <strong>Exam:</strong> {room.testData?.exam_name || room.mode}
                   </div>
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                    <strong>Status:</strong> {room.is_started ? 'Started' : 'Waiting...'}
+                    <strong>Status:</strong> {room.state === 'PLAYING' ? 'Started' : room.state === 'FINISHED' ? 'Finished' : 'Waiting...'}
                   </div>
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    <strong>Players:</strong> {room.players.length}
+                    <strong>Players:</strong> {(room.host ? 1 : 0) + (room.guests ? room.guests.length : 0)}
                   </div>
                 </div>
               ))}

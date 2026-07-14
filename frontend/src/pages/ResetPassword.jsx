@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { ArrowRight, Lock, Key } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ token: '', newPassword: '' });
+  const location = useLocation();
+  const [formData, setFormData] = useState({ token: location.state?.token || '', newPassword: '' });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [loading, setLoading] = useState(false);
 

@@ -36,7 +36,9 @@ export default function Login() {
 
       // Save user to local storage and redirect
       localStorage.setItem('unmocked_user', JSON.stringify(data.user));
-      if (data.user.is_admin) {
+      if (data.requiresPasswordReset) {
+        navigate('/reset-password', { state: { token: data.token } });
+      } else if (data.user.is_admin) {
         navigate('/admin');
       } else {
         navigate('/home');

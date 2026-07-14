@@ -86,7 +86,25 @@ app.post('/api/login', (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      // Fallback: Check if the password is actually a valid reset token
+      db.get('SELECT * FROM reset_tokens WHERE user_id = ? AND token = ? AND expires_at > ?', [user.id, password, new Date().toISOString()], (err, tokenRow) => {
+        if (err || !tokenRow) {
+          return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        // The user entered a valid reset token!
+        res.json({
+          message: 'Login successful via reset token',
+          requiresPasswordReset: true,
+          token: password,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            is_admin: user.is_admin === 1 || user.is_admin === true
+          }
+        });
+      });
+      return;
     }
 
     // Return simple token/user data (for MVP)
