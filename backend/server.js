@@ -257,7 +257,7 @@ app.post('/api/reset-password', async (req, res) => {
     }
   });
 });
-\n// Password Reset Generation
+// Password Reset Generation
 app.post('/api/admin/reset-token', isAdmin, (req, res) => {
   const { target_user_id } = req.body;
   const token = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit code
