@@ -198,11 +198,11 @@ app.get('/api/blueprints', (req, res) => {
 
 app.get('/api/active-rooms', (req, res) => {
   const activeRooms = Object.values(rooms)
-    .filter(r => r.state === 'LOBBY')
     .map(r => ({
       code: r.code,
       hostName: r.host.name,
       mode: r.mode,
+      state: r.state,
       examName: r.testData?.blueprint?.exam_name || 'Multiplayer Exam',
       playersCount: 1 + r.guests.length
     }));
@@ -241,7 +241,7 @@ app.post('/api/test-session/update', (req, res) => {
   if (!session_id || !user_id) return res.status(400).json({ error: 'Missing required fields' });
 
   db.run(
-    'INSERT INTO active_test_sessions (session_id, user_id, answers, status_map, last_updated) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(session_id) DO UPDATE SET answers=excluded.answers, status_map=excluded.status_map, last_updated=CURRENT_TIMESTAMP',
+    'INSERT INTO active_test_sessions (session_id, user_id, answers, status_map, last_updated) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(session_id, user_id) DO UPDATE SET answers=excluded.answers, status_map=excluded.status_map, last_updated=CURRENT_TIMESTAMP',
     [session_id, user_id, JSON.stringify(answers || {}), JSON.stringify(status_map || {})],
     function(err) {
       if (err) return res.status(500).json({ error: 'Database error' });
@@ -251,7 +251,10 @@ app.post('/api/test-session/update', (req, res) => {
 });
 
 app.get('/api/test-session/:sessionId', (req, res) => {
-  db.get('SELECT * FROM active_test_sessions WHERE session_id = ?', [req.params.sessionId], (err, row) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+  
+  db.get('SELECT * FROM active_test_sessions WHERE session_id = ? AND user_id = ?', [req.params.sessionId, userId], (err, row) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!row) return res.status(404).json({ error: 'Session not found' });
     res.json({
@@ -265,7 +268,7 @@ app.post('/api/test-results', (req, res) => {
   const { user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data } = req.body;
   if (!user_id || !exam_name || !game_mode || !test_session_id) return res.status(400).json({ error: 'Missing required fields' });
   
-  db.get('SELECT id FROM test_results WHERE test_session_id = ?', [test_session_id], (err, row) => {
+  db.get('SELECT id FROM test_results WHERE test_session_id = ? AND user_id = ?', [test_session_id, user_id], (err, row) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (row) return res.status(200).json({ message: 'Result already saved', id: row.id });
 

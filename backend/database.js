@@ -141,11 +141,12 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
     db.run(`
       CREATE TABLE IF NOT EXISTS active_test_sessions (
-        session_id TEXT PRIMARY KEY,
+        session_id TEXT,
         user_id INTEGER NOT NULL,
         answers TEXT NOT NULL DEFAULT '{}',
         status_map TEXT NOT NULL DEFAULT '{}',
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (session_id, user_id),
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);

@@ -153,11 +153,16 @@ export default function Dashboard() {
     prompt += `4. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
     prompt += `5. Do NOT include any conversational text before or after the output.\n`;
     prompt += `6. CRITICAL: Do NOT wrap any text in double quotes unless it is actually part of the question. The pipe character (|) is the ONLY delimiter.\n`;
-    prompt += `7. MATH/EQUATIONS: If the question contains mathematics, fractions, or symbols, you MUST use standard LaTeX wrapped in $$ or \\( \\) (e.g., Solve for x: $$\\frac{x}{2} = 4$$).\n`;
-    prompt += `8. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row (after the Explanation). This is critical for parsing newlines correctly.\n\n`;
+    prompt += `7. MATH/EQUATIONS: If the question contains mathematics, use inline LaTeX wrapped in \\( \\). Do NOT use $ display math. For reasoning inequalities (e.g., A > B < C), use inline math \\( A > B \\).\n`;
+    prompt += `8. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row (after the Explanation). This is critical for parsing newlines correctly.\n`;
+    prompt += `9. PASSAGES (IMPORTANT): For questions based on a reading passage, data interpretation, puzzle, or coding-decoding sets, use this format:\n`;
+    prompt += `   - First, output the passage on its own row (Row_Type = P): P|[Passage_ID]|[Full Passage Text]###\n`;
+    prompt += `   - Then, for each question related to that passage (Row_Type = PQ): PQ|[Passage_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    prompt += `   - For normal standalone questions with no passage (Row_Type = Q): Q||[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    prompt += `10. LINE BREAKS (CRITICAL): For Syllogisms, Inequalities, and Data Sufficiency, you MUST include standard newlines to separate each statement and conclusion. Do NOT write them as a single continuous string. Example:\nStatements:\nAll A are B.\nSome B are C.\n\nConclusions:\nI. Some A are C.\nII. No A is C.\n\n`;
 
     prompt += `FORMAT HEADERS (Do not change these):\n`;
-    let headers = ['Question_Text'];
+    let headers = ['Row_Type', 'Passage_ID', 'Text_Content'];
     for(let i=1; i<=optionsCount; i++) headers.push(`Option_${String.fromCharCode(64+i)}`);
     headers.push('Correct_Option');
     headers.push('Explanation');
@@ -166,9 +171,13 @@ export default function Dashboard() {
     prompt += `EXAMPLE OUTPUT:\n`;
     prompt += headers.join('|') + '###\n';
     if(optionsCount === 4) {
-      prompt += `Evaluate the integral: $$\\int x^2 dx$$\n\nIt is hard.|$$\\frac{x^3}{3} + C$$|$$x^3 + C$$|$$2x$$|$$\\frac{x^2}{2} + C$$|A|Use the power rule for integration.###\n`;
+      prompt += `P|passage1|This is a reading passage about history.||||||###\n`;
+      prompt += `PQ|passage1|What is the main idea?|Opt1|Opt2|Opt3|Opt4|A|Because of X.###\n`;
+      prompt += `Q||What is 2+2?|1|2|3|4|D|Basic math.###\n`;
     } else {
-      prompt += `Evaluate the integral: $$\\int x^2 dx$$\n\nIt is hard.|$$\\frac{x^3}{3} + C$$|$$x^3 + C$$|$$2x$$|$$\\frac{x^2}{2} + C$$|$$x$$|A|Use the power rule for integration.###\n`;
+      prompt += `P|puzzle1|Seven persons sit in a row...|||||||###\n`;
+      prompt += `PQ|puzzle1|Who sits at the end?|A|B|C|D|E|A|A sits at the extreme left.###\n`;
+      prompt += `Q||Statements:<br/>All A are B.<br/>Some B are C.<br/><br/>Conclusions:<br/>I. Some A are C.<br/>II. No A is C.|Only I follows|Only II follows|Either I or II|Neither I nor II|Both I and II|C|Either case.###\n`;
     }
 
     return prompt;
@@ -205,22 +214,102 @@ export default function Dashboard() {
   const parseRawCsv = (csvString, expectedCols) => {
     if (!csvString.trim()) return [];
     let rawRows = csvString.split('###').map(r => r.trim()).filter(r => r.length > 0);
-    if (rawRows[0].includes('Question_Text|')) {
+    // Strip header
+    if (rawRows[0].includes('Question_Text|') || rawRows[0].includes('Row_Type|')) {
       rawRows = rawRows.slice(1);
     }
     if (rawRows.length === 0) return [];
 
-    return rawRows.map((row, i) => {
+    let currentPassages = {};
+    let parsedQs = [];
+
+    rawRows.forEach((row, i) => {
       const cols = row.split('|');
-      if (cols.length < expectedCols) throw new Error(`Row ${i+1} is missing pipes. Found ${cols.length} columns, expected ${expectedCols}. Data: ${row.substring(0, 50)}...`);
-      return { 
-        id: Math.random().toString(36).substr(2, 9), 
-        text: cols[0].trim(), 
-        options: cols.slice(1, expectedCols - 2).map(o => o.trim()), 
-        answer: cols[expectedCols - 2].trim(),
-        explanation: cols[expectedCols - 1]?.trim() || ''
-      };
+      const rowType = cols[0].trim();
+      
+      if (rowType === 'P') {
+         const pId = cols[1]?.trim();
+         const pText = cols[2]?.trim();
+         if (pId && pText) {
+             currentPassages[pId] = pText;
+         }
+         return; // Don't add a question for P row
+      }
+      
+      if (rowType === 'PQ' || rowType === 'Q') {
+          // New format
+          const pId = cols[1]?.trim();
+          const text = cols[2]?.trim();
+          const answer = cols[cols.length - 2]?.trim();
+          const explanation = cols[cols.length - 1]?.trim() || '';
+          const options = cols.slice(3, cols.length - 2).map(o => o.trim());
+          
+          parsedQs.push({
+             id: Math.random().toString(36).substr(2, 9),
+             text: text,
+             options: options,
+             answer: answer,
+             explanation: explanation,
+             passage: rowType === 'PQ' ? (currentPassages[pId] || pId) : null
+          });
+      } else {
+          // Old format compatibility
+          if (cols.length < expectedCols) throw new Error(`Row ${i+1} is missing pipes. Found ${cols.length} columns. Data: ${row.substring(0, 50)}...`);
+          
+          let text = cols[0].trim();
+          let passage = null;
+          
+          if (text.toLowerCase().startsWith('passage:')) {
+             const parts = text.split('Question:');
+             if (parts.length > 1) {
+                 passage = parts[0].substring(8).trim();
+                 text = parts.slice(1).join('Question:').trim();
+             }
+          }
+          
+          parsedQs.push({
+            id: Math.random().toString(36).substr(2, 9),
+            text: text,
+            options: cols.slice(1, expectedCols - 2).map(o => o.trim()),
+            answer: cols[expectedCols - 2].trim(),
+            explanation: cols[expectedCols - 1]?.trim() || '',
+            passage: passage
+          });
+      }
     });
+    
+    return parsedQs;
+  };
+
+
+  const shuffleQuestions = (questions) => {
+    const blocks = [];
+    let currentPassage = null;
+    let currentBlock = [];
+
+    questions.forEach(q => {
+      if (q.passage) {
+        if (currentPassage !== q.passage) {
+          if (currentBlock.length > 0) blocks.push(currentBlock);
+          currentBlock = [q];
+          currentPassage = q.passage;
+        } else {
+          currentBlock.push(q);
+        }
+      } else {
+        if (currentBlock.length > 0) blocks.push(currentBlock);
+        currentBlock = [q];
+        currentPassage = null;
+      }
+    });
+    if (currentBlock.length > 0) blocks.push(currentBlock);
+
+    for (let i = blocks.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
+    }
+
+    return blocks.flat();
   };
 
   const handleParseAndValidateAll = () => {
@@ -235,7 +324,7 @@ export default function Dashboard() {
           const rawData = sectionData[sec.name] || '';
           if (!rawData) throw new Error(`Please provide data for section: ${sec.name}`);
           
-          const parsedQs = parseRawCsv(rawData, expectedCols);
+          let parsedQs = parseRawCsv(rawData, expectedCols); parsedQs = shuffleQuestions(parsedQs);
           if (parsedQs.length !== sec.questions) {
              throw new Error(`${sec.name} expects ${sec.questions} questions, but parsed ${parsedQs.length}.`);
           }
@@ -530,9 +619,9 @@ export default function Dashboard() {
               </button>
               
               <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '24px', marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
-                <h3 className="geist-pixel" style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>Active Multiplayer Rooms</h3>
+                <h3 className="geist-pixel" style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>Live Test Sessions</h3>
                 {activeRooms.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No active multiplayer rooms right now.</p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No live test sessions right now.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '500px' }}>
                     {activeRooms.map(r => (
@@ -541,7 +630,9 @@ export default function Dashboard() {
                           <div style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>{r.hostName}'s Room</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.examName} • {r.playersCount} Players</div>
                         </div>
-                        <button className="btn btn-primary" onClick={() => handleJoinRoom(r.code)}>Join ({r.code})</button>
+                        <button className="btn btn-primary" onClick={() => handleJoinRoom(r.code)}>
+                          {r.state === 'LOBBY' ? `Join (${r.code})` : r.state === 'PLAYING' ? `Rejoin (${r.code})` : 'View Results'}
+                        </button>
                       </div>
                     ))}
                   </div>

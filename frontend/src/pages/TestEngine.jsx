@@ -132,7 +132,7 @@ export default function TestEngine() {
     if (mpRoom) {
       setRoom(mpRoom);
       setLiveStats(mpRoom.stats || {});
-      setTestSessionId(mpRoom.code + '-' + currentUser.id); // Permanently unique to this user in this room
+      setTestSessionId(mpRoom.code); // Shared test session ID for everyone in the room
       socket.emit('joinRoom', { code: mpRoom.code, user: currentUser });
       if (mpRoom.state === 'FINISHED') {
         setIsSubmitted(true);
@@ -158,7 +158,7 @@ export default function TestEngine() {
     localStorage.setItem('current_test_session_id', testSessionId);
 
     // Fetch active session from server
-    fetch(`/api/test-session/${testSessionId}`)
+    fetch(`/api/test-session/${testSessionId}?userId=${currentUser.id}`)
       .then(res => {
         if (!res.ok) throw new Error('No session');
         return res.json();
@@ -818,14 +818,26 @@ export default function TestEngine() {
                   </div>
               </div>
 
-              <div className="te-question-content">
-                  <div 
-                      className="math-inline-force" 
-                      style={{ marginBottom: '1rem', fontSize: '1.1rem' }}
-                      dangerouslySetInnerHTML={{ __html: currentQuestion.text }} 
-                  />
+              <div className="te-question-content" style={{ display: 'flex', gap: '20px' }}>
+                  {currentQuestion.passage && (
+                      <div className="te-passage-panel" style={{ flex: '1 1 50%', paddingRight: '20px', borderRight: '1px solid var(--border-color)', maxHeight: '600px', overflowY: 'auto' }}>
+                          <h4 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-dark)' }}>Read the following carefully:</h4>
+                          <div 
+                              className="math-inline-force" 
+                              style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-dark)', whiteSpace: 'pre-wrap' }}
+                              dangerouslySetInnerHTML={{ __html: currentQuestion.passage }} 
+                          />
+                      </div>
+                  )}
 
-                  <div className="te-options-list">
+                  <div style={{ flex: currentQuestion.passage ? '1 1 50%' : '1' }}>
+                      <div 
+                          className="math-inline-force" 
+                          style={{ marginBottom: '1rem', fontSize: '1.1rem', whiteSpace: 'pre-wrap' }}
+                          dangerouslySetInnerHTML={{ __html: currentQuestion.text }} 
+                      />
+
+                      <div className="te-options-list">
                       {currentQuestion.options.map((opt, i) => {
                           const letter = optionsLetters[i];
                           const isSelected = answers[currentQuestion.id] === letter;
@@ -873,6 +885,7 @@ export default function TestEngine() {
                   )}
               </div>
           </div>
+              </div>
 
           {/* Right Pane (Palette) */}
           <div className="te-right-pane">
