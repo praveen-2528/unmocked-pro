@@ -99,7 +99,7 @@ export default function Login() {
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <a href="#" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none' }}>Forgot password?</a>
+              <Link to="/reset" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none' }}>Forgot password?</Link>
             </div>
           </div>
 

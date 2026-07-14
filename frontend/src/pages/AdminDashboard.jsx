@@ -7,6 +7,11 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('blueprints'); 
   const [blueprints, setBlueprints] = useState([]);
   const [users, setUsers] = useState([]);
+
+  const [systemInfo, setSystemInfo] = useState(null);
+  const [rooms, setRooms] = useState({});
+  const [tests, setTests] = useState([]);
+
   
   const defaultBpForm = { id: null, exam_id: '', exam_name: '', total_duration: 60, options_count: 4, has_sectional_timing: false, sections: [] };
   const [showBlueprintForm, setShowBlueprintForm] = useState(false);
@@ -23,6 +28,36 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/blueprints', { headers: { 'x-user-id': currentUser.id } });
       if (res.ok) setBlueprints(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  
+  const fetchSystemInfo = async () => {
+    try {
+      const res = await fetch('/api/admin/system', { headers: { 'x-user-id': currentUser.id } });
+      if (res.ok) setSystemInfo(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchRooms = async () => {
+    try {
+      const res = await fetch('/api/admin/rooms', { headers: { 'x-user-id': currentUser.id } });
+      if (res.ok) setRooms(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchTests = async () => {
+    try {
+      const res = await fetch('/api/admin/tests', { headers: { 'x-user-id': currentUser.id } });
+      if (res.ok) setTests(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteTest = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this test result?')) return;
+    try {
+      const res = await fetch(`/api/admin/tests/${id}`, { method: 'DELETE', headers: { 'x-user-id': currentUser.id } });
+      if (res.ok) fetchTests();
     } catch (err) { console.error(err); }
   };
 
