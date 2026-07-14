@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!currentUser || !currentUser.is_admin) navigate('/');
     else fetchBlueprints();
-  }, []);\n
+  }, []);
   useEffect(() => {
     const interval = setInterval(() => {
       if (activeTab === 'system') fetchSystemInfo();
