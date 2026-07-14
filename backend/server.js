@@ -231,7 +231,33 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
   });
 
 
-// Password Reset Generation
+
+// Password Reset Execution
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: 'Token and new password are required' });
+  }
+
+  db.get('SELECT * FROM reset_tokens WHERE token = ? AND expires_at > ?', [token, new Date().toISOString()], async (err, tokenRow) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!tokenRow) return res.status(400).json({ error: 'Invalid or expired token' });
+
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, tokenRow.user_id], (updateErr) => {
+        if (updateErr) return res.status(500).json({ error: 'Failed to update password' });
+        
+        // Cleanup token
+        db.run('DELETE FROM reset_tokens WHERE id = ?', [tokenRow.id]);
+        res.json({ message: 'Password reset successful' });
+      });
+    } catch (hashErr) {
+      res.status(500).json({ error: 'Server error hashing password' });
+    }
+  });
+});
+\n// Password Reset Generation
 app.post('/api/admin/reset-token', isAdmin, (req, res) => {
   const { target_user_id } = req.body;
   const token = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit code
