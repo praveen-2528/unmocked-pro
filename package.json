@@ -1,7 +1,7 @@
 {
   "name": "unmocked-platform",
   "version": "1.0.0",
-  "description": "UnMocked testing platform",
+  "description": "UnMocked Pro - An advanced mock testing and test generation platform powered by GenAI with real-time multiplayer lobbies, sectional timings, and smart parsing capabilities.",
   "scripts": {
     "dev:full": "node start-full.js",
     "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend"
