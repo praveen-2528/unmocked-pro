@@ -139,6 +139,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
     db.run('ALTER TABLE test_results ADD COLUMN status_map TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN test_data TEXT', (err) => {});
 
+    // Gamification Migrations
+    db.run('ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0', (err) => {});
+    
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_badges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        badge_key TEXT NOT NULL,
+        earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        UNIQUE(user_id, badge_key)
+      )
+    `);
+
     db.run(`
       CREATE TABLE IF NOT EXISTS active_test_sessions (
         session_id TEXT,

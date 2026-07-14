@@ -596,11 +596,12 @@ export default function Dashboard() {
             </h1>
             <p style={{ color: 'var(--text-secondary)' }}>Launch a new mock test to begin your preparation.</p>
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            {currentUser.is_admin && (
-              <Link to="/admin" style={{ textDecoration: 'none' }}><button className="btn btn-primary">Admin Panel</button></Link>
-            )}
-          </div>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <button className="btn btn-glass" onClick={() => navigate('/profile')}>My Profile</button>
+              {currentUser.is_admin && (
+                <Link to="/admin" style={{ textDecoration: 'none' }}><button className="btn btn-primary">Admin Panel</button></Link>
+              )}
+            </div>
         </header>
 
         {renderWizardTracker()}

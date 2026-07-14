@@ -6,9 +6,15 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('unmocked_user'));
-    if (user && user.email) {
-      navigate(user.is_admin ? '/admin' : '/home');
+    try {
+      const userStr = localStorage.getItem('unmocked_user');
+      if (!userStr || userStr === 'undefined') return;
+      const user = JSON.parse(userStr);
+      if (user && user.email && !user.requiresPasswordReset) {
+        navigate(user.is_admin ? '/admin' : '/home');
+      }
+    } catch (e) {
+      localStorage.removeItem('unmocked_user');
     }
   }, [navigate]);
 

@@ -365,6 +365,8 @@ app.post('/api/test-results', (req, res) => {
         
         // Cleanup active session
         db.run('DELETE FROM active_test_sessions WHERE session_id = ?', [test_session_id]);
+        // Gamification: add XP
+        db.run('UPDATE users SET xp = xp + 100 WHERE id = ?', [user_id]);
         
         res.status(201).json({ message: 'Test result saved', id: this.lastID });
       }
@@ -385,6 +387,384 @@ app.get('/api/test-results/:userId', (req, res) => {
   db.all('SELECT id, user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, created_at FROM test_results WHERE user_id = ? ORDER BY created_at DESC', [userId], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json(rows);
+  });
+});
+
+
+
+// --- Missing Gamification APIs ---
+app.get('/api/history/room/:code', (req, res) => {
+  const testCode = req.params.code;
+  if (!testCode) return res.status(400).json({ error: 'Room code required.' });
+
+  db.all(`
+      SELECT tr.*, u.name as player_name, u.email as player_email
+      FROM test_results tr
+      LEFT JOIN users u ON tr.user_id = u.id
+      WHERE tr.test_session_id = ?
+      ORDER BY tr.score DESC
+  `, [testCode], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+
+      if (rows.length === 0) {
+          return res.json({ leaderboard: [] });
+      }
+
+      const leaderboard = rows.map(r => ({
+          playerId: r.user_id,
+          playerName: r.player_name || 'Unknown',
+          email: r.player_email,
+          score: r.score,
+          total: r.total_questions,
+          correct: r.correct,
+          incorrect: r.incorrect,
+          submittedAt: r.created_at,
+      }));
+
+      res.json({ leaderboard });
+  });
+});
+
+app.get('/api/history/:id', (req, res) => {
+  db.get('SELECT * FROM test_results WHERE id = ?', [req.params.id], (err, r) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (!r) return res.status(404).json({ error: 'History record not found.' });
+
+      // Build topic breakdown
+      let topicBreakdown = {};
+      try {
+         const testData = JSON.parse(r.test_data || '[]');
+         const statusMap = JSON.parse(r.status_map || '{}');
+         testData.forEach((q, idx) => {
+            const topic = q.topic || 'General';
+            if (!topicBreakdown[topic]) topicBreakdown[topic] = { correct: 0, total: 0 };
+            topicBreakdown[topic].total += 1;
+            if (statusMap[idx] === 'correct') topicBreakdown[topic].correct += 1;
+         });
+      } catch (e) {}
+
+      const detail = {
+          id: r.id,
+          userId: r.user_id,
+          examType: r.exam_name,
+          testFormat: r.game_mode,
+          score: r.score,
+          total: r.total_questions,
+          correct: r.correct,
+          incorrect: r.incorrect,
+          unattempted: r.unattempted,
+          percentage: r.accuracy,
+          topicBreakdown: topicBreakdown,
+          isMultiplayer: r.game_mode === 'multiplayer',
+          answers: r.answers ? JSON.parse(r.answers) : null,
+          questions: r.test_data ? JSON.parse(r.test_data) : null,
+          date: r.created_at,
+      };
+
+      res.json({ detail });
+  });
+});
+
+app.get('/api/users/profile', (req, res) => {
+  let { email, name } = req.query;
+  const authUserId = req.headers['user-id'];
+
+  if (email === 'undefined' || email === 'null' || !email || email.trim() === '') email = null;
+  if (name === 'undefined' || name === 'null' || !name || name.trim() === '') name = null;
+
+  let query = 'SELECT id, name, email, xp FROM users WHERE id = ?';
+  let params = [authUserId];
+
+  if (email) {
+      query = 'SELECT id, name, email, xp FROM users WHERE email = ?';
+      params = [email.toLowerCase().trim()];
+  } else if (name) {
+      query = 'SELECT id, name, email, xp FROM users WHERE name = ?';
+      params = [name.trim()];
+  }
+
+  db.get(query, params, (err, userRow) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+
+      if (!userRow) {
+          const guestName = name ? name.trim() : (email ? email.split('@')[0] : 'Guest');
+          return res.status(404).json({ error: 'User not found' });
+      }
+
+      const xp = userRow.xp || 0;
+      const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+      const currentLevelMinXp = (level - 1) * (level - 1) * 100;
+      const nextLevelXp = level * level * 100;
+
+      db.all("SELECT date(created_at) as test_date FROM test_results WHERE user_id = ? GROUP BY test_date ORDER BY test_date DESC", [userRow.id], (err, historyDatesRows) => {
+          if (err) return res.status(500).json({ error: 'Database error' });
+          
+          const historyDates = historyDatesRows.map(row => row.test_date);
+          const getUTCDateString = (date) => date.toISOString().split('T')[0];
+
+          const todayStr = getUTCDateString(new Date());
+          const yesterday = new Date();
+          yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+          const yesterdayStr = getUTCDateString(yesterday);
+
+          const datesSet = new Set(historyDates);
+          let streak = 0;
+
+          if (datesSet.has(todayStr)) {
+              streak = 1;
+              let check = new Date();
+              while (true) {
+                  check.setUTCDate(check.getUTCDate() - 1);
+                  const checkStr = getUTCDateString(check);
+                  if (datesSet.has(checkStr)) {
+                      streak++;
+                  } else {
+                      break;
+                  }
+              }
+          } else if (datesSet.has(yesterdayStr)) {
+              streak = 1;
+              let check = new Date(yesterday);
+              while (true) {
+                  check.setUTCDate(check.getUTCDate() - 1);
+                  const checkStr = getUTCDateString(check);
+                  if (datesSet.has(checkStr)) {
+                      streak++;
+                  } else {
+                      break;
+                  }
+              }
+          }
+
+          db.all("SELECT date(created_at) as date, COUNT(*) as count FROM test_results WHERE user_id = ? AND created_at >= date('now', '-365 days') GROUP BY date", [userRow.id], (err, activityRows) => {
+              if (err) return res.status(500).json({ error: 'Database error' });
+              
+              const activity = {};
+              activityRows.forEach(row => {
+                  activity[row.date] = row.count;
+              });
+
+              db.all('SELECT badge_key, earned_at FROM user_badges WHERE user_id = ?', [userRow.id], (err, earnedBadgesRows) => {
+                  if (err) return res.status(500).json({ error: 'Database error' });
+                  
+                  const earnedBadgesMap = new Map(earnedBadgesRows.map(r => [r.badge_key, r.earned_at]));
+
+                  const ALL_BADGES = [
+                      { key: 'speed_demon', name: 'Speed Demon', description: 'Answered 5 consecutive questions correctly in under 5 seconds each' },
+                      { key: 'dedicated_learner', name: 'Dedicated Learner', description: 'Completed 10 or more mock tests' },
+                      { key: 'gladiator', name: 'Gladiator', description: 'Placed 1st in a multiplayer lobby of 3+ players' },
+                      { key: 'accuracy_50', name: 'Bronze Marksman', description: 'Achieved at least 50% accuracy on a test of 5+ questions' },
+                      { key: 'accuracy_75', name: 'Silver Marksman', description: 'Achieved at least 75% accuracy on a test of 5+ questions' },
+                      { key: 'accuracy_100', name: 'Gold Marksman', description: 'Achieved 100% accuracy on a test of 5+ questions' },
+                      { key: 'master_reasoning', name: 'Reasoning Master', description: 'Achieved 100% accuracy in a Reasoning test of 5+ questions' },
+                      { key: 'master_quant', name: 'Quant Master', description: 'Achieved 100% accuracy in a Quantitative Aptitude test of 5+ questions' },
+                      { key: 'master_english', name: 'English Master', description: 'Achieved 100% accuracy in an English test of 5+ questions' },
+                      { key: 'master_gs', name: 'GS Master', description: 'Achieved 100% accuracy in a General Studies test of 5+ questions' }
+                  ];
+
+                  const badges = ALL_BADGES.map(b => ({
+                      ...b,
+                      isUnlocked: earnedBadgesMap.has(b.key),
+                      earnedAt: earnedBadgesMap.get(b.key) || null
+                  }));
+
+                  // Now fetch the user's history
+                  db.all('SELECT id, exam_name as exam_type, game_mode as test_format, score, total_questions as total, correct, incorrect, unattempted, accuracy as percentage, created_at, status_map, test_data FROM test_results WHERE user_id = ? ORDER BY created_at DESC', [userRow.id], (err, hRows) => {
+                      if (err) return res.status(500).json({ error: 'Database error' });
+                      
+                      const history = hRows.map(r => {
+                         let topicBreakdown = {};
+                         try {
+                            const testData = JSON.parse(r.test_data || '[]');
+                            const statusMap = JSON.parse(r.status_map || '{}');
+                            testData.forEach((q, idx) => {
+                               const topic = q.topic || 'General';
+                               if (!topicBreakdown[topic]) topicBreakdown[topic] = { correct: 0, total: 0 };
+                               topicBreakdown[topic].total += 1;
+                               if (statusMap[idx] === 'correct') topicBreakdown[topic].correct += 1;
+                            });
+                         } catch (e) {}
+                  
+                         return {
+                           id: r.id,
+                           exam_type: r.exam_type,
+                           test_format: r.test_format,
+                           score: r.score,
+                           total: r.total,
+                           correct: r.correct,
+                           incorrect: r.incorrect,
+                           unattempted: r.unattempted,
+                           percentage: r.percentage,
+                           created_at: r.created_at,
+                           topicBreakdown: topicBreakdown
+                         };
+                      });
+
+                      res.json({
+                          user: {
+                              id: userRow.id,
+                              name: userRow.name,
+                              email: userRow.email,
+                              xp,
+                              level,
+                              currentLevelMinXp,
+                              nextLevelXp,
+                              streak,
+                              activity,
+                              badges
+                          },
+                          history
+                      });
+                  });
+              });
+          });
+      });
+  });
+});
+
+// --- Gamification APIs ---
+app.get('/api/gamification/stats', (req, res) => {
+  // Using user_id from query for simplicity, normally from JWT
+  const userId = req.query.user_id || req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  db.get('SELECT xp FROM users WHERE id = ?', [userId], (err, userObj) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const xp = userObj ? (userObj.xp || 0) : 0;
+    const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+    const currentLevelMinXp = (level - 1) * (level - 1) * 100;
+    const nextLevelXp = level * level * 100;
+
+    // Daily Streak Calculation
+    db.all("SELECT date(created_at) as test_date FROM test_results WHERE user_id = ? GROUP BY test_date ORDER BY test_date DESC", [userId], (err, historyDatesRows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      
+      const historyDates = historyDatesRows.map(row => row.test_date);
+      const getUTCDateString = (date) => date.toISOString().split('T')[0];
+
+      const todayStr = getUTCDateString(new Date());
+      const yesterday = new Date();
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const yesterdayStr = getUTCDateString(yesterday);
+
+      const datesSet = new Set(historyDates);
+      let streak = 0;
+
+      if (datesSet.has(todayStr)) {
+          streak = 1;
+          let check = new Date();
+          while (true) {
+              check.setUTCDate(check.getUTCDate() - 1);
+              const checkStr = getUTCDateString(check);
+              if (datesSet.has(checkStr)) {
+                  streak++;
+              } else {
+                  break;
+              }
+          }
+      } else if (datesSet.has(yesterdayStr)) {
+          streak = 1;
+          let check = new Date(yesterday);
+          while (true) {
+              check.setUTCDate(check.getUTCDate() - 1);
+              const checkStr = getUTCDateString(check);
+              if (datesSet.has(checkStr)) {
+                  streak++;
+              } else {
+                  break;
+              }
+          }
+      }
+
+      // Activity Map: 365 Days
+      db.all("SELECT date(created_at) as date, COUNT(*) as count FROM test_results WHERE user_id = ? AND created_at >= date('now', '-365 days') GROUP BY date", [userId], (err, activityRows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        
+        const activity = {};
+        activityRows.forEach(row => {
+            activity[row.date] = row.count;
+        });
+
+        const ALL_BADGES = [
+            { key: 'speed_demon', name: 'Speed Demon', description: 'Answered 5 consecutive questions correctly in under 5 seconds each' },
+            { key: 'dedicated_learner', name: 'Dedicated Learner', description: 'Completed 10 or more mock tests' },
+            { key: 'gladiator', name: 'Gladiator', description: 'Placed 1st in a multiplayer lobby of 3+ players' },
+            { key: 'accuracy_50', name: 'Bronze Marksman', description: 'Achieved at least 50% accuracy on a test of 5+ questions' },
+            { key: 'accuracy_75', name: 'Silver Marksman', description: 'Achieved at least 75% accuracy on a test of 5+ questions' },
+            { key: 'accuracy_100', name: 'Gold Marksman', description: 'Achieved 100% accuracy on a test of 5+ questions' },
+            { key: 'master_reasoning', name: 'Reasoning Master', description: 'Achieved 100% accuracy in a Reasoning test of 5+ questions' },
+            { key: 'master_quant', name: 'Quant Master', description: 'Achieved 100% accuracy in a Quantitative Aptitude test of 5+ questions' },
+            { key: 'master_english', name: 'English Master', description: 'Achieved 100% accuracy in an English test of 5+ questions' },
+            { key: 'master_gs', name: 'GS Master', description: 'Achieved 100% accuracy in a General Studies test of 5+ questions' }
+        ];
+
+        db.all('SELECT badge_key, earned_at FROM user_badges WHERE user_id = ?', [userId], (err, earnedBadgesRows) => {
+          if (err) return res.status(500).json({ error: 'Database error' });
+          const earnedBadgesMap = new Map(earnedBadgesRows.map(r => [r.badge_key, r.earned_at]));
+
+          const badges = ALL_BADGES.map(b => ({
+              ...b,
+              isUnlocked: earnedBadgesMap.has(b.key),
+              earnedAt: earnedBadgesMap.get(b.key) || null
+          }));
+
+          res.json({
+              xp,
+              level,
+              currentLevelMinXp,
+              nextLevelXp,
+              streak,
+              activity,
+              badges
+          });
+        });
+      });
+    });
+  });
+});
+
+app.get('/api/gamification/friends-feed', (req, res) => {
+  // Mock friends feed since we don't have friends system active in new repo
+  res.json({ feed: [] });
+});
+
+app.get('/api/history', (req, res) => {
+  const userId = req.query.user_id || req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  db.all('SELECT id, exam_name as exam_type, game_mode as test_format, score, total_questions as total, correct, incorrect, unattempted, accuracy as percentage, created_at, status_map, test_data FROM test_results WHERE user_id = ? ORDER BY created_at DESC', [userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    
+    // Map to old format
+    const history = rows.map(r => {
+       let topicBreakdown = {};
+       try {
+          const testData = JSON.parse(r.test_data || '[]');
+          const statusMap = JSON.parse(r.status_map || '{}');
+          testData.forEach((q, idx) => {
+             const topic = q.topic || 'General';
+             if (!topicBreakdown[topic]) topicBreakdown[topic] = { correct: 0, total: 0 };
+             topicBreakdown[topic].total += 1;
+             if (statusMap[idx] === 'correct') topicBreakdown[topic].correct += 1;
+          });
+       } catch (e) {}
+
+       return {
+         id: r.id,
+         exam_type: r.exam_type,
+         test_format: r.test_format,
+         score: r.score,
+         total: r.total,
+         correct: r.correct,
+         incorrect: r.incorrect,
+         unattempted: r.unattempted,
+         percentage: r.percentage,
+         created_at: r.created_at,
+         topicBreakdown: topicBreakdown
+       };
+    });
+
+    res.json({ history });
   });
 });
 
