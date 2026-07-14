@@ -703,6 +703,7 @@ io.on('connection', (socket) => {
 
   socket.on('beginTestForAll', ({ code }) => {
     if (rooms[code]) {
+      rooms[code].testStarted = true;
       io.to(code).emit('multiplayerTestStarted');
     }
   });

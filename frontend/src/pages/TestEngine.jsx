@@ -606,20 +606,20 @@ export default function TestEngine() {
         </div>
 
         <div style={{ padding: '16px 64px', borderTop: '1px solid #ccc', backgroundColor: '#f8f9fa', display: 'flex', justifyContent: 'center' }}>
-          {(!isMultiplayer || (isMultiplayer && isHost)) ? (
+          {(!isMultiplayer || isHost || room?.testStarted) ? (
             <button 
               className="te-btn submit" 
               style={{ backgroundColor: instructionsAccepted ? '#1abc9c' : '#ccc', color: '#fff', padding: '12px 48px', fontSize: '16px', borderRadius: '4px', border: 'none', cursor: instructionsAccepted ? 'pointer' : 'not-allowed' }}
               disabled={!instructionsAccepted}
               onClick={() => {
-                if (isMultiplayer && isHost) {
+                if (isMultiplayer && isHost && !room?.testStarted) {
                   socket.emit('beginTestForAll', { code: room.code });
                 } else {
                   setShowInstructions(false);
                 }
               }}
             >
-              {isMultiplayer && isHost ? 'Start Test for All' : 'I am ready to begin'}
+              {isMultiplayer && isHost && !room?.testStarted ? 'Start Test for All' : 'I am ready to begin'}
             </button>
           ) : (
             <button 
