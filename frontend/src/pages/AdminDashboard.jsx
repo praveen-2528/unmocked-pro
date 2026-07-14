@@ -22,7 +22,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!currentUser || !currentUser.is_admin) navigate('/');
     else fetchBlueprints();
-  }, []);
+  }, []);\n
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (activeTab === 'system') fetchSystemInfo();
+      else if (activeTab === 'rooms') fetchRooms();
+      else if (activeTab === 'tests') fetchTests();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
 
   const fetchBlueprints = async () => {
     try {
@@ -71,7 +80,10 @@ export default function AdminDashboard() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === 'users') fetchUsers();
-    else fetchBlueprints();
+    else if (tab === 'blueprints') fetchBlueprints();
+    else if (tab === 'system') fetchSystemInfo();
+    else if (tab === 'rooms') fetchRooms();
+    else if (tab === 'tests') fetchTests();
   };
 
   // Blueprint Form Logic
