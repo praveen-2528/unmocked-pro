@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Users, CheckCircle, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function RoomReview({ sessionId, onBack }) {
   const [roomData, setRoomData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('leaderboard'); // 'leaderboard' or 'questions'
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const navigate = useNavigate();
   
   useEffect(() => {
     fetch(`/api/public/history-rooms/${sessionId}`)
@@ -109,7 +111,11 @@ export default function RoomReview({ sessionId, onBack }) {
             Leaderboard
           </button>
           <button 
-            onClick={() => setActiveTab('questions')}
+            onClick={() => {
+              if (roomData.length > 0) {
+                navigate(`/review/${roomData[0].id}`);
+              }
+            }}
             style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: activeTab === 'questions' ? 'var(--accent-color)' : 'var(--surface-color)', color: activeTab === 'questions' ? '#fff' : 'var(--text-primary)' }}
           >
             Review Questions
