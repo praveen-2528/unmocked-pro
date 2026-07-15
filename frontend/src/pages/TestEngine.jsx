@@ -810,11 +810,10 @@ export default function TestEngine() {
                       </>
                   ) : (
                       <>
-                          <button className="te-btn" onClick={handleClear}>Clear Response</button>
-                          
                           {!friendlyRevealed[currentQuestion.id] && (
                               <>
                                   <button className="te-btn" onClick={handleFriendlySkip}>Skip</button>
+                                  <button className="te-btn" onClick={handleClear}>Clear Response</button>
                                   <button className="te-btn submit" onClick={handleFriendlySubmit}>Submit</button>
                               </>
                           )}

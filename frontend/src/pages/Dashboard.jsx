@@ -603,6 +603,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <button className="btn btn-glass" onClick={() => setStep(7)}>Global Reviews</button>
               <button className="btn btn-glass" onClick={() => navigate('/profile')}>My Profile</button>
+              <button className="btn btn-glass" onClick={() => { localStorage.removeItem('unmocked_user'); navigate('/'); }}>Logout</button>
               {currentUser.is_admin && (
                 <Link to="/admin" style={{ textDecoration: 'none' }}><button className="btn btn-primary">Admin Panel</button></Link>
               )}
