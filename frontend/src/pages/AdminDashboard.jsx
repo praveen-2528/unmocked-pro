@@ -347,6 +347,7 @@ export default function AdminDashboard() {
                     <th style={{ padding: '12px' }}>User</th>
                     <th style={{ padding: '12px' }}>Exam</th>
                     <th style={{ padding: '12px' }}>Score</th>
+                    <th style={{ padding: '12px' }}>Date / Time</th>
                     <th style={{ padding: '12px' }}>Actions</th>
                   </tr>
                 </thead>
@@ -357,13 +358,14 @@ export default function AdminDashboard() {
                       <td style={{ padding: '12px' }}>{t.user_name} ({t.user_email})</td>
                       <td style={{ padding: '12px' }}>{t.exam_name} ({t.game_mode})</td>
                       <td style={{ padding: '12px' }}>{t.score} / {t.total_questions}</td>
+                      <td style={{ padding: '12px' }}>{new Date(t.created_at).toLocaleString()}</td>
                       <td style={{ padding: '12px', display: 'flex', gap: '8px' }}>
-                        <button className="btn btn-glass" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => window.open(`/test/${t.id}/result`, '_blank')}>View</button>
+                        <button className="btn btn-glass" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => window.open(`/review/${t.id}?view=review`, '_blank')}>View</button>
                         <button className="btn btn-glass" style={{ padding: '6px 12px', fontSize: '0.85rem', color: 'var(--danger-color)' }} onClick={() => handleDeleteTest(t.id)}>Delete</button>
                       </td>
                     </tr>
                   ))}
-                  {tests.length === 0 && <tr><td colSpan="5" style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>No tests found.</td></tr>}
+                  {tests.length === 0 && <tr><td colSpan="6" style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>No tests found.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -410,6 +412,10 @@ export default function AdminDashboard() {
               <div className="glass-card" style={{ padding: '20px', textAlign: 'center' }}>
                 <h4 style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Memory (Free / Total)</h4>
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>{systemInfo.freeMem} / {systemInfo.totalMem}</div>
+              </div>
+              <div className="glass-card" style={{ padding: '20px', textAlign: 'center' }}>
+                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Project Size on Disk</h4>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>{systemInfo.projectSize}</div>
               </div>
               <div className="glass-card" style={{ padding: '20px', textAlign: 'center' }}>
                 <h4 style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>CPU</h4>

@@ -32,6 +32,7 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
         body: JSON.stringify({
           user_id: currentUser.id,
           test_session_id: testSessionId,
+          exam_id: testData.blueprint.exam_id,
           exam_name: testData.blueprint.exam_name,
           game_mode: gameMode,
           score: scoreData.marks,

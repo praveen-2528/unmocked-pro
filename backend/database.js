@@ -118,6 +118,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
         user_id INTEGER NOT NULL,
         test_session_id TEXT,
         exam_name TEXT NOT NULL,
+        exam_id TEXT,
         game_mode TEXT NOT NULL,
         score REAL NOT NULL,
         total_questions INTEGER NOT NULL,
@@ -134,6 +135,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     `);
 
     // In case the table already exists from a previous migration, try to add the columns safely
+    db.run('ALTER TABLE test_results ADD COLUMN exam_id TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN test_session_id TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN answers TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN status_map TEXT', (err) => {});

@@ -192,8 +192,28 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
 
 
   // --- New Admin Apis ---
-  app.get('/api/admin/system', isAdmin, (req, res) => {
+  const fsPromises = require('fs').promises;
+  async function getDirSize(dir) {
+    let size = 0;
+    try {
+      const files = await fsPromises.readdir(dir, { withFileTypes: true });
+      for (const file of files) {
+        if (file.name === '.git') continue;
+        const filePath = path.join(dir, file.name);
+        if (file.isDirectory()) {
+          size += await getDirSize(filePath);
+        } else {
+          const stats = await fsPromises.stat(filePath);
+          size += stats.size;
+        }
+      }
+    } catch (err) {}
+    return size;
+  }
+
+  app.get('/api/admin/system', isAdmin, async (req, res) => {
     const os = require('os');
+    const projectSize = await getDirSize(path.join(__dirname, '..'));
     const systemInfo = {
       cpuCount: os.cpus().length,
       cpuModel: os.cpus()[0].model,
@@ -201,7 +221,8 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
       freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) + ' GB',
       uptime: (os.uptime() / 3600).toFixed(2) + ' Hours',
       platform: os.platform(),
-      loadAvg: os.loadavg()
+      loadAvg: os.loadavg(),
+      projectSize: (projectSize / 1024 / 1024).toFixed(2) + ' MB'
     };
     res.json(systemInfo);
   });
@@ -350,16 +371,26 @@ app.get('/api/test-session/:sessionId', (req, res) => {
 });
 
 app.post('/api/test-results', (req, res) => {
-  const { user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data } = req.body;
+  const { user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data } = req.body;
   if (!user_id || !exam_name || !game_mode || !test_session_id) return res.status(400).json({ error: 'Missing required fields' });
   
   db.get('SELECT id FROM test_results WHERE test_session_id = ? AND user_id = ?', [test_session_id, user_id], (err, row) => {
     if (err) return res.status(500).json({ error: 'Database error' });
-    if (row) return res.status(200).json({ message: 'Result already saved', id: row.id });
+    if (row) {
+      db.run(
+        'UPDATE test_results SET exam_id = ?, score = ?, correct = ?, incorrect = ?, unattempted = ?, accuracy = ?, answers = ?, status_map = ?, test_data = ? WHERE id = ?',
+        [exam_id, score, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null, row.id],
+        (updateErr) => {
+           if (updateErr) return res.status(500).json({ error: 'Database update error' });
+           return res.status(200).json({ message: 'Result updated', id: row.id });
+        }
+      );
+      return;
+    }
 
     db.run(
-      'INSERT INTO test_results (user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [user_id, test_session_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null],
+      'INSERT INTO test_results (user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null],
       function(err) {
         if (err) return res.status(500).json({ error: 'Database error' });
         
