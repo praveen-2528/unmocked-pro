@@ -211,6 +211,33 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
     return size;
   }
 
+  app.get('/api/admin/history-rooms', isAdmin, (req, res) => {
+    const query = `
+      SELECT test_session_id, exam_name, game_mode, MAX(created_at) as created_at, COUNT(user_id) as participants 
+      FROM test_results 
+      WHERE game_mode LIKE 'Multiplayer%' AND test_session_id IS NOT NULL
+      GROUP BY test_session_id
+      ORDER BY MAX(created_at) DESC
+    `;
+    db.all(query, [], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json(rows);
+    });
+  });
+
+  app.get('/api/admin/history-rooms/:sessionId', isAdmin, (req, res) => {
+    const query = `
+      SELECT tr.*, u.name as user_name, u.email as user_email
+      FROM test_results tr
+      LEFT JOIN users u ON tr.user_id = u.id
+      WHERE tr.test_session_id = ?
+    `;
+    db.all(query, [req.params.sessionId], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json(rows);
+    });
+  });
+
   app.get('/api/admin/system', isAdmin, async (req, res) => {
     const os = require('os');
     const projectSize = await getDirSize(path.join(__dirname, '..'));
@@ -371,15 +398,15 @@ app.get('/api/test-session/:sessionId', (req, res) => {
 });
 
 app.post('/api/test-results', (req, res) => {
-  const { user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data } = req.body;
+  const { user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data, time_spent } = req.body;
   if (!user_id || !exam_name || !game_mode || !test_session_id) return res.status(400).json({ error: 'Missing required fields' });
   
   db.get('SELECT id FROM test_results WHERE test_session_id = ? AND user_id = ?', [test_session_id, user_id], (err, row) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (row) {
       db.run(
-        'UPDATE test_results SET exam_id = ?, score = ?, correct = ?, incorrect = ?, unattempted = ?, accuracy = ?, answers = ?, status_map = ?, test_data = ? WHERE id = ?',
-        [exam_id, score, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null, row.id],
+        'UPDATE test_results SET exam_id = ?, score = ?, correct = ?, incorrect = ?, unattempted = ?, accuracy = ?, answers = ?, status_map = ?, test_data = ?, time_spent = ? WHERE id = ?',
+        [exam_id, score, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null, time_spent ? JSON.stringify(time_spent) : null, row.id],
         (updateErr) => {
            if (updateErr) return res.status(500).json({ error: 'Database update error' });
            return res.status(200).json({ message: 'Result updated', id: row.id });
@@ -389,8 +416,8 @@ app.post('/api/test-results', (req, res) => {
     }
 
     db.run(
-      'INSERT INTO test_results (user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null],
+      'INSERT INTO test_results (user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data, time_spent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers ? JSON.stringify(answers) : null, status_map ? JSON.stringify(status_map) : null, test_data ? JSON.stringify(test_data) : null, time_spent ? JSON.stringify(time_spent) : null],
       function(err) {
         if (err) return res.status(500).json({ error: 'Database error' });
         
@@ -406,7 +433,13 @@ app.post('/api/test-results', (req, res) => {
 });
 
 app.get('/api/test-results/detail/:id', (req, res) => {
-  db.get('SELECT * FROM test_results WHERE id = ?', [req.params.id], (err, row) => {
+  const query = `
+    SELECT tr.*, u.name as user_name
+    FROM test_results tr
+    JOIN users u ON tr.user_id = u.id
+    WHERE tr.id = ?
+  `;
+  db.get(query, [req.params.id], (err, row) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!row) return res.status(404).json({ error: 'Test not found' });
     res.json(row);

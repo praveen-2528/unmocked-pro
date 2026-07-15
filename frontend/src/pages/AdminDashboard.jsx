@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Users, Key, Plus, Trash2, Edit3, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-
+import RoomReview from '../components/RoomReview';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -12,6 +12,8 @@ export default function AdminDashboard() {
 
   const [systemInfo, setSystemInfo] = useState(null);
   const [rooms, setRooms] = useState({});
+  const [historyRooms, setHistoryRooms] = useState([]);
+  const [viewingRoomId, setViewingRoomId] = useState(null);
   const [tests, setTests] = useState([]);
 
   
@@ -30,6 +32,7 @@ export default function AdminDashboard() {
       if (activeTab === 'system') fetchSystemInfo();
       else if (activeTab === 'rooms') fetchRooms();
       else if (activeTab === 'tests') fetchTests();
+      else if (activeTab === 'history-rooms') fetchHistoryRooms();
     }, 3000);
     return () => clearInterval(interval);
   }, [activeTab]);
@@ -54,6 +57,13 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/rooms', { headers: { 'x-user-id': currentUser.id } });
       if (res.ok) setRooms(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchHistoryRooms = async () => {
+    try {
+      const res = await fetch('/api/admin/history-rooms', { headers: { 'x-user-id': currentUser.id } });
+      if (res.ok) setHistoryRooms(await res.json());
     } catch (err) { console.error(err); }
   };
 
@@ -86,6 +96,7 @@ export default function AdminDashboard() {
     else if (tab === 'system') fetchSystemInfo();
     else if (tab === 'rooms') fetchRooms();
     else if (tab === 'tests') fetchTests();
+    else if (tab === 'history-rooms') fetchHistoryRooms();
   };
 
   // Blueprint Form Logic
@@ -183,8 +194,10 @@ export default function AdminDashboard() {
           </div>
         </header>
 
+        {viewingRoomId && <RoomReview sessionId={viewingRoomId} onBack={() => setViewingRoomId(null)} />}
+
                 {/* Navigation */}
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
+        <div style={{ display: viewingRoomId ? 'none' : 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
           <button className={`btn ${activeTab === 'blueprints' ? 'btn-primary' : 'btn-glass'}`} onClick={() => handleTabChange('blueprints')}>
             <Settings size={18} /> Blueprints
           </button>
@@ -197,13 +210,16 @@ export default function AdminDashboard() {
           <button className={`btn ${activeTab === 'rooms' ? 'btn-primary' : 'btn-glass'}`} onClick={() => handleTabChange('rooms')}>
             <Users size={18} /> Live Rooms
           </button>
+          <button className={`btn ${activeTab === 'history-rooms' ? 'btn-primary' : 'btn-glass'}`} onClick={() => handleTabChange('history-rooms')}>
+            <Users size={18} /> Room Review
+          </button>
           <button className={`btn ${activeTab === 'system' ? 'btn-primary' : 'btn-glass'}`} onClick={() => handleTabChange('system')}>
             <Settings size={18} /> System Info
           </button>
         </div>
 
         {/* Blueprints Content */}
-        {activeTab === 'blueprints' && (
+        {!viewingRoomId && activeTab === 'blueprints' && (
           <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 className="geist-pixel" style={{ fontSize: '1.5rem' }}>Exam Blueprints</h2>
@@ -299,7 +315,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Users Content */}
-        {activeTab === 'users' && (
+        {!viewingRoomId && activeTab === 'users' && (
           <div className="animate-fade-in glass-panel" style={{ padding: '24px' }}>
             <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '24px' }}>Registered Users</h2>
             <div style={{ overflowX: 'auto' }}>
@@ -336,7 +352,7 @@ export default function AdminDashboard() {
         )}
 
         {/* User Tests Content */}
-        {activeTab === 'tests' && (
+        {!viewingRoomId && activeTab === 'tests' && (
           <div className="animate-fade-in glass-panel" style={{ padding: '24px' }}>
             <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '24px' }}>Global User Tests</h2>
             <div style={{ overflowX: 'auto' }}>
@@ -373,7 +389,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Live Rooms Content */}
-        {activeTab === 'rooms' && (
+        {!viewingRoomId && activeTab === 'rooms' && (
           <div className="animate-fade-in glass-panel" style={{ padding: '24px' }}>
             <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '24px' }}>Live Multiplayer Rooms</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
@@ -396,8 +412,39 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Historical Rooms Content */}
+        {!viewingRoomId && activeTab === 'history-rooms' && (
+          <div className="animate-fade-in glass-panel" style={{ padding: '24px' }}>
+            <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '24px' }}>Room Review History</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {historyRooms.map((r, i) => (
+                <div key={i} className="glass-card" style={{ padding: '20px', borderLeft: '4px solid #b45309' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>Room: {r.test_session_id}</h3>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    <strong>Exam:</strong> {r.exam_name}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    <strong>Mode:</strong> {r.game_mode}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                    <strong>Players:</strong> {r.participants}
+                  </div>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => setViewingRoomId(r.test_session_id)}
+                    style={{ width: '100%' }}
+                  >
+                    Review Room
+                  </button>
+                </div>
+              ))}
+              {historyRooms.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No historical rooms found.</p>}
+            </div>
+          </div>
+        )}
+
         {/* System Info Content */}
-        {activeTab === 'system' && systemInfo && (
+        {!viewingRoomId && activeTab === 'system' && systemInfo && (
           <div className="animate-fade-in glass-panel" style={{ padding: '24px' }}>
             <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '24px' }}>System Diagnostics</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>

@@ -25,6 +25,9 @@ export default function TestEngine() {
   const [instructionsAccepted, setInstructionsAccepted] = useState(false);
   const [scoreData, setScoreData] = useState(null);
   const [testSessionId, setTestSessionId] = useState('');
+  
+  const [timeSpentMap, setTimeSpentMap] = useState({});
+  const [reviewUserName, setReviewUserName] = useState('');
 
   // --- Multiplayer & Modes State ---
   const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
@@ -109,6 +112,8 @@ export default function TestEngine() {
             mc: parsedData.blueprint?.marks_correct || 1,
             mi: parsedData.blueprint?.marks_incorrect || 0.25
           });
+          if (data.time_spent) setTimeSpentMap(JSON.parse(data.time_spent));
+          if (data.user_name) setReviewUserName(data.user_name);
           setIsSubmitted(false);
           setReviewMode(true);
           setSearchParams({ view: 'review' });
@@ -280,6 +285,8 @@ export default function TestEngine() {
       socket.on('friendlyNextQuestion', ({ secIdx, qIdx }) => {
          setCurrentSectionIdx(secIdx);
          setCurrentQuestionIdx(qIdx);
+         setQuestionStartTime(Date.now());
+         setFriendlyTimer(0);
       });
       socket.on('friendlyRejoinWaiting', ({ ans, qId }) => {
          // The server says we already submitted for this question before we disconnected.
@@ -308,9 +315,25 @@ export default function TestEngine() {
   }, [chatMessages, showChat]);
 
   useEffect(() => {
-    if (isSubmitted || reviewMode || !testData || isFriendly || showInstructions) return;
+    if (isSubmitted || reviewMode || !testData || showInstructions) return;
     
-    const timer = setInterval(() => {
+    // Time tracking map updates every second for the active question
+    const sec = testData.sections[currentSectionIdx];
+    const qId = sec?.questions[currentQuestionIdx]?.id;
+    
+    let timer;
+    if (qId && !(isFriendly && friendlyRevealed[qId])) {
+      timer = setInterval(() => {
+        setTimeSpentMap(prev => ({
+          ...prev,
+          [qId]: (prev[qId] || 0) + 1
+        }));
+      }, 1000);
+    }
+    
+    if (isFriendly) return () => timer && clearInterval(timer);
+    
+    const overallTimer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           handleTimeUp();
@@ -319,8 +342,12 @@ export default function TestEngine() {
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(timer);
-  }, [testData, isSubmitted, currentSectionIdx, isFriendly, showInstructions, reviewMode]);
+    
+    return () => {
+      if (timer) clearInterval(timer);
+      clearInterval(overallTimer);
+    };
+  }, [testData, isSubmitted, currentSectionIdx, currentQuestionIdx, isFriendly, friendlyRevealed, showInstructions, reviewMode]);
 
   useEffect(() => {
     if (!isFriendly || showInstructions || isSubmitted || !testData) return;
@@ -588,6 +615,8 @@ export default function TestEngine() {
         testSessionId={testSessionId}
         answers={answers}
         statusMap={statusMap}
+        timeSpentMap={timeSpentMap}
+        reviewUserName={reviewUserName}
         onReviewAnswers={() => { setIsSubmitted(false); setReviewMode(true); }}
       />
     );
@@ -608,11 +637,19 @@ export default function TestEngine() {
             </div>
           </div>
           <div className="te-header-right">
-            <div className="te-avatars">
-              <div className="te-avatar">
-                <div className="avatar-placeholder">{currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}</div>
+            {reviewMode && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
+                <div className="avatar-placeholder">{reviewUserName ? reviewUserName.charAt(0).toUpperCase() : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}</div>
+                <strong style={{ color: 'var(--text-dark)' }}>{reviewUserName || currentUser.name}</strong>
               </div>
-            </div>
+            )}
+            {!reviewMode && (
+              <div className="te-avatars">
+                <div className="te-avatar">
+                  <div className="avatar-placeholder">{currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}</div>
+                </div>
+              </div>
+            )}
           </div>
         </header>
         
@@ -971,7 +1008,7 @@ export default function TestEngine() {
                                               key={i} 
                                               className={`te-grid-btn status-${cls}`}
                                               onClick={() => {
-                                                  if (gameMode !== 'Multiplayer-Friendly') setCurrentQuestionIdx(i);
+                                                  if (reviewMode || gameMode !== 'Multiplayer-Friendly') setCurrentQuestionIdx(i);
                                               }}
                                               style={currentQuestionIdx === i ? { border: '2px solid #000' } : {}}
                                           >
@@ -982,6 +1019,13 @@ export default function TestEngine() {
                               </div>
                           </div>
                           
+                          {reviewMode && timeSpentMap[currentQuestion.id] !== undefined && (
+                              <div style={{ padding: '12px', background: 'var(--surface-color)', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontWeight: '500', color: 'var(--text-dark)' }}>Time Spent</span>
+                                  <span style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>{formatTime(timeSpentMap[currentQuestion.id])}</span>
+                              </div>
+                          )}
+
                           <div className="te-analysis-table">
                               <table>
                                   <thead>

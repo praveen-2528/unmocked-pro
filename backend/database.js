@@ -129,6 +129,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
         answers TEXT,
         status_map TEXT,
         test_data TEXT,
+        time_spent TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
@@ -138,6 +139,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     db.run('ALTER TABLE test_results ADD COLUMN exam_id TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN test_session_id TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN answers TEXT', (err) => {});
+    db.run('ALTER TABLE test_results ADD COLUMN time_spent TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN status_map TEXT', (err) => {});
     db.run('ALTER TABLE test_results ADD COLUMN test_data TEXT', (err) => {});
 
