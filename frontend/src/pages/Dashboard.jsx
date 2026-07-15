@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, FileText, CheckCircle2, ChevronRight, Play, Copy, BookOpen, AlertCircle, Edit2, Check } from 'lucide-react';
+import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
 import Navbar from '../components/Navbar';
@@ -722,9 +723,20 @@ export default function Dashboard() {
                        <span>Total Tests Taken</span>
                        <strong style={{ color: 'var(--accent-color)' }}>{pastTests.length}</strong>
                      </div>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', marginBottom: '16px' }}>
                        <span>Average Accuracy</span>
                        <strong style={{ color: 'var(--accent-color)' }}>{(pastTests.reduce((acc, t) => acc + t.accuracy, 0) / pastTests.length).toFixed(0)}%</strong>
+                     </div>
+                     <div style={{ width: '100%', height: 200 }}>
+                       <ResponsiveContainer>
+                         <LineChart data={pastTests.slice().reverse().map((t, idx) => ({ name: `Test ${idx+1}`, accuracy: t.accuracy }))} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                           <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                           <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
+                           <Tooltip contentStyle={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--glass-border)', borderRadius: '8px' }} itemStyle={{ color: 'var(--accent-color)' }} />
+                           <Line type="monotone" dataKey="accuracy" stroke="var(--accent-color)" strokeWidth={3} dot={{ fill: 'var(--surface-color)', stroke: 'var(--accent-color)', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
+                         </LineChart>
+                       </ResponsiveContainer>
                      </div>
                    </div>
                 ) : (
