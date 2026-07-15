@@ -8,7 +8,7 @@ export default function RoomReview({ sessionId, onBack }) {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   
   useEffect(() => {
-    fetch(`/api/admin/history-rooms/${sessionId}`)
+    fetch(`/api/public/history-rooms/${sessionId}`)
       .then(res => res.json())
       .then(data => {
         setRoomData(data);

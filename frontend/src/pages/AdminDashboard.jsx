@@ -374,7 +374,7 @@ export default function AdminDashboard() {
                       <td style={{ padding: '12px' }}>{t.user_name} ({t.user_email})</td>
                       <td style={{ padding: '12px' }}>{t.exam_name} ({t.game_mode})</td>
                       <td style={{ padding: '12px' }}>{t.score} / {t.total_questions}</td>
-                      <td style={{ padding: '12px' }}>{new Date(t.created_at).toLocaleString()}</td>
+                      <td style={{ padding: '12px' }}>{new Date(t.created_at.replace(' ', 'T') + 'Z').toLocaleString()}</td>
                       <td style={{ padding: '12px', display: 'flex', gap: '8px' }}>
                         <button className="btn btn-glass" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => window.open(`/review/${t.id}?view=review`, '_blank')}>View</button>
                         <button className="btn btn-glass" style={{ padding: '6px 12px', fontSize: '0.85rem', color: 'var(--danger-color)' }} onClick={() => handleDeleteTest(t.id)}>Delete</button>

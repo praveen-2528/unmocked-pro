@@ -215,7 +215,7 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
     const query = `
       SELECT test_session_id, exam_name, game_mode, MAX(created_at) as created_at, COUNT(user_id) as participants 
       FROM test_results 
-      WHERE game_mode LIKE 'Multiplayer%' AND test_session_id IS NOT NULL
+      WHERE test_session_id IS NOT NULL
       GROUP BY test_session_id
       ORDER BY MAX(created_at) DESC
     `;
@@ -226,6 +226,40 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
   });
 
   app.get('/api/admin/history-rooms/:sessionId', isAdmin, (req, res) => {
+    const query = `
+      SELECT tr.*, u.name as user_name, u.email as user_email
+      FROM test_results tr
+      LEFT JOIN users u ON tr.user_id = u.id
+      WHERE tr.test_session_id = ?
+    `;
+    db.all(query, [req.params.sessionId], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json(rows);
+    });
+  });
+
+  app.get('/api/public/history-rooms', (req, res) => {
+    const query = `
+      SELECT 
+        tr.test_session_id, 
+        tr.exam_name, 
+        tr.game_mode, 
+        MAX(tr.created_at) as created_at, 
+        COUNT(tr.user_id) as participants,
+        GROUP_CONCAT(COALESCE(u.name, 'Unknown'), ', ') as participant_names
+      FROM test_results tr
+      LEFT JOIN users u ON tr.user_id = u.id
+      WHERE tr.test_session_id IS NOT NULL
+      GROUP BY tr.test_session_id
+      ORDER BY MAX(tr.created_at) DESC
+    `;
+    db.all(query, [], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json(rows);
+    });
+  });
+
+  app.get('/api/public/history-rooms/:sessionId', (req, res) => {
     const query = `
       SELECT tr.*, u.name as user_name, u.email as user_email
       FROM test_results tr

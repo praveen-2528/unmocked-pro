@@ -3,6 +3,7 @@ import { ArrowRight, FileText, CheckCircle2, ChevronRight, Play, Copy, BookOpen,
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
 import Navbar from '../components/Navbar';
+import GlobalRoomReviews from '../components/GlobalRoomReviews';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -600,6 +601,7 @@ export default function Dashboard() {
             <p style={{ color: 'var(--text-secondary)' }}>Launch a new mock test to begin your preparation.</p>
           </div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <button className="btn btn-glass" onClick={() => setStep(7)}>Global Reviews</button>
               <button className="btn btn-glass" onClick={() => navigate('/profile')}>My Profile</button>
               {currentUser.is_admin && (
                 <Link to="/admin" style={{ textDecoration: 'none' }}><button className="btn btn-primary">Admin Panel</button></Link>
@@ -608,6 +610,11 @@ export default function Dashboard() {
         </header>
 
         {renderWizardTracker()}
+
+        {/* Step 7: Global Room Reviews */}
+        {step === 7 && (
+          <GlobalRoomReviews currentUser={currentUser} onBack={() => setStep(0)} />
+        )}
 
         {/* Step 0: Home */}
         {step === 0 && (
@@ -688,7 +695,7 @@ export default function Dashboard() {
                       <div key={test.id} style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <strong style={{ color: 'var(--accent-color)' }}>{test.exam_name}</strong>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{new Date(test.created_at).toLocaleDateString()}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{new Date(test.created_at.replace(' ', 'T') + 'Z').toLocaleString()}</span>
                         </div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span>{test.game_mode.replace('-', ' ')}</span>
