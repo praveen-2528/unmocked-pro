@@ -1,0 +1,99 @@
+/* ── DI Chart Renderer ─────────────────────────────────────────────── */
+.di-chart-container {
+  width: 100%;
+  border-radius: 12px;
+  background: rgba(15, 22, 41, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.di-chart-canvas {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+}
+
+/* ── Table Variant ────────────────────────────────────────────────── */
+.di-table-wrapper {
+  width: 100%;
+}
+
+.di-table-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  margin-bottom: 14px;
+  letter-spacing: 0.3px;
+}
+
+.di-table-scroll {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.di-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.di-table thead th {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  font-weight: 700;
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.25);
+  position: sticky;
+  top: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.di-table tbody tr {
+  transition: background 0.15s;
+}
+
+.di-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.di-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.di-table tbody td {
+  padding: 9px 14px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-variant-numeric: tabular-nums;
+}
+
+.di-table-cat {
+  text-align: left !important;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .di-chart-container {
+    padding: 10px;
+  }
+  
+  .di-table {
+    font-size: 12px;
+  }
+  
+  .di-table thead th,
+  .di-table tbody td {
+    padding: 7px 10px;
+  }
+}

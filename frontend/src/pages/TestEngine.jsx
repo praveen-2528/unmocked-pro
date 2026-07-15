@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Clock, CheckCircle2, AlertCircle, Bookmark, ChevronRight, XCircle, MessageCircle, BarChart2, Users, FastForward, Send } from 'lucide-react';
 import { socket } from '../socket';
 import Results from '../components/Results';
+import DIChartRenderer from '../components/DIChartRenderer';
 import '../TestEngine.css';
 
 export default function TestEngine() {
@@ -905,7 +906,14 @@ export default function TestEngine() {
                       </div>
                   )}
 
-                  <div style={{ flex: currentQuestion.passage ? '1 1 50%' : '1' }}>
+                  {currentQuestion.chartData && (
+                      <div className="te-passage-panel" style={{ flex: '1 1 50%', paddingRight: '20px', borderRight: '1px solid var(--border-color)', maxHeight: '600px', overflowY: 'auto' }}>
+                          <h4 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: '8px' }}>📊 Data Interpretation</h4>
+                          <DIChartRenderer chartData={currentQuestion.chartData} />
+                      </div>
+                  )}
+
+                  <div style={{ flex: (currentQuestion.passage || currentQuestion.chartData) ? '1 1 50%' : '1' }}>
                       <div 
                           className="math-inline-force" 
                           style={{ marginBottom: '1rem', fontSize: '1.1rem', whiteSpace: 'pre-wrap' }}

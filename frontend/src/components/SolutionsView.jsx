@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, Check, Eye } from 'lucide-react';
 import QuestionRenderer from './QuestionRenderer';
+import DIChartRenderer from './DIChartRenderer';
 import styles from '../pages/Test.module.css';
 const cx = (...classes) => classes.filter(Boolean).map(c => styles[c] || c).join(' '); // Reuse Test UI styles
 
@@ -136,6 +137,12 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                                 {q.image_url && (
                                     <div style={{ margin: '1rem 0' }}>
                                         <img src={q.image_url} alt="Question" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                    </div>
+                                )}
+
+                                {q.chartData && (
+                                    <div style={{ margin: '1rem 0' }}>
+                                        <DIChartRenderer chartData={q.chartData} />
                                     </div>
                                 )}
 

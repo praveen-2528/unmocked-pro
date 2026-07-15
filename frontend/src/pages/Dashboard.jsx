@@ -164,7 +164,13 @@ export default function Dashboard() {
     prompt += `   - Then, for each question related to that passage (Row_Type = PQ): PQ|[Passage_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
     prompt += `   - For normal standalone questions with no passage (Row_Type = Q): Q||[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
     prompt += `10. LINE BREAKS (CRITICAL): For Syllogisms, Inequalities, and Data Sufficiency, you MUST include standard newlines (\\n) to separate each statement and conclusion. Do NOT write them as a single continuous string. Example:\nStatements:\nAll A are B.\nSome B are C.\n\nConclusions:\nI. Some A are C.\nII. No A is C.\n`;
-    prompt += `11. INTELLIGENT FORMATTING (CRITICAL): You must analyze the topic (e.g. English Para Jumbles, Reading Comprehension, Puzzles) and intelligently determine the best visual layout. If a question contains multiple distinct sentences, statements, or paragraphs that need to be ordered or read separately, you MUST use standard newlines (\\n) to separate them so they are readable on the UI.\n\n`;
+    prompt += `11. INTELLIGENT FORMATTING (CRITICAL): You must analyze the topic (e.g. English Para Jumbles, Reading Comprehension, Puzzles) and intelligently determine the best visual layout. If a question contains multiple distinct sentences, statements, or paragraphs that need to be ordered or read separately, you MUST use standard newlines (\\n) to separate them so they are readable on the UI.\n`;
+    prompt += `12. DATA INTERPRETATION (DI) CHARTS: For Data Interpretation questions (bar charts, line graphs, pie charts, tables), use the D/DQ row format instead of P/PQ. This renders actual charts on the UI instead of describing them in text.\n`;
+    prompt += `   - First, output chart data as JSON on a D row: D|[DI_Set_ID]|{"type":"bar|line|pie|table|stacked_bar","title":"Chart Title","xLabel":"X Axis","yLabel":"Y Axis","categories":["Cat1","Cat2",...],"series":[{"name":"Series1","values":[v1,v2,...]},{"name":"Series2","values":[v1,v2,...]}]}###\n`;
+    prompt += `   - IMPORTANT: The JSON in D row must be valid. Use double quotes for JSON keys/strings. The pipe (|) only separates Row_Type, ID, and JSON. Do NOT use pipes inside the JSON.\n`;
+    prompt += `   - Then, for each question based on that chart (Row_Type = DQ): DQ|[DI_Set_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    prompt += `   - Chart type guide: "bar" for bar charts, "line" for line/trend graphs, "pie" for pie/donut charts, "table" for tabular data, "stacked_bar" for stacked bar charts.\n`;
+    prompt += `   - For DI topics, you MUST use this D/DQ format so the chart renders visually. Do NOT describe chart data as plain text.\n\n`;
 
     prompt += `FORMAT HEADERS (Do not change these):\n`;
     let headers = ['Row_Type', 'Passage_ID', 'Text_Content'];
@@ -183,6 +189,16 @@ export default function Dashboard() {
       prompt += `P|puzzle1|Seven persons sit in a row...|||||||###\n`;
       prompt += `PQ|puzzle1|Who sits at the end?|A|B|C|D|E|A|A sits at the extreme left.###\n`;
       prompt += `Q||Statements:<br/>All A are B.<br/>Some B are C.<br/><br/>Conclusions:<br/>I. Some A are C.<br/>II. No A is C.|Only I follows|Only II follows|Either I or II|Neither I nor II|Both I and II|C|Either case.###\n`;
+    }
+
+    prompt += `\nDI CHART EXAMPLE (when topic involves Data Interpretation):\n`;
+    if(optionsCount === 4) {
+      prompt += `D|di1|{"type":"bar","title":"Sales (in lakhs)","xLabel":"Year","yLabel":"Sales","categories":["2019","2020","2021","2022"],"series":[{"name":"Product A","values":[45,38,52,61]},{"name":"Product B","values":[30,35,40,55]}]}###\n`;
+      prompt += `DQ|di1|What is the total sales of Product A from 2019 to 2022?|186 lakhs|196 lakhs|206 lakhs|176 lakhs|B|45+38+52+61=196 lakhs.###\n`;
+      prompt += `DQ|di1|In which year did Product B show the highest growth?|2020|2021|2022|2019|C|2022: 55-40=15 is highest year-on-year increase.###\n`;
+    } else {
+      prompt += `D|di1|{"type":"bar","title":"Production (in thousands)","xLabel":"Year","yLabel":"Units","categories":["2018","2019","2020","2021","2022"],"series":[{"name":"Company X","values":[120,135,110,150,160]},{"name":"Company Y","values":[100,115,95,130,145]}]}###\n`;
+      prompt += `DQ|di1|What is the ratio of Company X to Y production in 2021?|15:13|3:2|10:9|5:4|15:14|A|150:130 = 15:13.###\n`;
     }
 
     return prompt;
@@ -226,6 +242,7 @@ export default function Dashboard() {
     if (rawRows.length === 0) return [];
 
     let currentPassages = {};
+    let currentChartData = {};
     let parsedQs = [];
 
     rawRows.forEach((row, i) => {
@@ -241,7 +258,21 @@ export default function Dashboard() {
          return; // Don't add a question for P row
       }
       
-      if (rowType === 'PQ' || rowType === 'Q') {
+      // DI Chart data row — stores chart JSON, similar to P row
+      if (rowType === 'D') {
+         const dId = cols[1]?.trim();
+         const dJson = cols.slice(2).join('|').trim();
+         if (dId && dJson) {
+             try {
+                 currentChartData[dId] = JSON.parse(dJson);
+             } catch(e) {
+                 console.warn(`Failed to parse DI chart JSON for ${dId}:`, e.message);
+             }
+         }
+         return;
+      }
+      
+      if (rowType === 'DQ' || rowType === 'PQ' || rowType === 'Q') {
           // New format
           const pId = cols[1]?.trim();
           const text = cols[2]?.trim();
@@ -249,14 +280,19 @@ export default function Dashboard() {
           const explanation = cols[cols.length - 1]?.trim() || '';
           const options = cols.slice(3, cols.length - 2).map(o => o.trim());
           
-          parsedQs.push({
+          const qObj = {
              id: Math.random().toString(36).substr(2, 9),
              text: text,
              options: options,
              answer: answer,
              explanation: explanation,
              passage: rowType === 'PQ' ? (currentPassages[pId] || pId) : null
-          });
+          };
+          // Attach chart data for DQ rows
+          if (rowType === 'DQ' && pId && currentChartData[pId]) {
+             qObj.chartData = currentChartData[pId];
+          }
+          parsedQs.push(qObj);
       } else {
           // Old format compatibility
           if (cols.length < expectedCols) throw new Error(`Row ${i+1} is missing pipes. Found ${cols.length} columns. Data: ${row.substring(0, 50)}...`);
