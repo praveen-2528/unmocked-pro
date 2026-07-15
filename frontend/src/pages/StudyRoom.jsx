@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { Users, MessageSquare, FileText, Upload, Send, ArrowLeft, Play } from 'lucide-react';
+import useAuthStore from '../store/useAuthStore';
+
 
 export default function StudyRoom() {
   const { groupId } = useParams();
@@ -20,7 +22,7 @@ export default function StudyRoom() {
   const [activeTab, setActiveTab] = useState('chat'); // 'chat', 'docs', 'tests'
   const chatEndRef = useRef(null);
 
-  const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+  const currentUser = useAuthStore(state => state.user);
 
   useEffect(() => {
     if (!currentUser.id) {

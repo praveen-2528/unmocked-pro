@@ -11,7 +11,7 @@ const fs = require('fs');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Setup uploads directory for documents
 const uploadsDir = path.join(__dirname, 'uploads');

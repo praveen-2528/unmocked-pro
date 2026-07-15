@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/useAuthStore';
+import UserProfileModal from '../components/UserProfileModal';
+
 
 export default function Leaderboard() {
-  const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+  const currentUser = useAuthStore(state => state.user);
   const navigate = useNavigate();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProfileName, setSelectedProfileName] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.email) {
@@ -66,7 +70,7 @@ export default function Leaderboard() {
             {leaderboard.length >= 3 && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '20px', marginBottom: '40px' }}>
                 {/* 2nd Place */}
-                <div className="glass-card" onClick={() => navigate(`/profile/${leaderboard[1].id}`)} style={{ width: '200px', height: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderColor: getRankColor(2), cursor: 'pointer', transition: 'transform 0.2s' }}>
+                <div className="glass-card" onClick={() => setSelectedProfileName(leaderboard[1].name)} style={{ width: '200px', height: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderColor: getRankColor(2), cursor: 'pointer', transition: 'transform 0.2s' }}>
                   <div style={{ fontSize: '32px', marginBottom: '8px' }}>🥈</div>
                   <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'var(--text-secondary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
                     {leaderboard[1].name.charAt(0).toUpperCase()}
@@ -76,7 +80,7 @@ export default function Leaderboard() {
                 </div>
                 
                 {/* 1st Place */}
-                <div className="glass-card" onClick={() => navigate(`/profile/${leaderboard[0].id}`)} style={{ width: '220px', height: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderColor: getRankColor(1), borderWidth: '2px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 8px 32px rgba(251, 191, 36, 0.2)' }}>
+                <div className="glass-card" onClick={() => setSelectedProfileName(leaderboard[0].name)} style={{ width: '220px', height: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderColor: getRankColor(1), borderWidth: '2px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 8px 32px rgba(251, 191, 36, 0.2)' }}>
                   <div style={{ fontSize: '48px', marginBottom: '8px' }}>🥇</div>
                   <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#fbbf24', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold', marginBottom: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
                     {leaderboard[0].name.charAt(0).toUpperCase()}
@@ -86,7 +90,7 @@ export default function Leaderboard() {
                 </div>
 
                 {/* 3rd Place */}
-                <div className="glass-card" onClick={() => navigate(`/profile/${leaderboard[2].id}`)} style={{ width: '200px', height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderColor: getRankColor(3), cursor: 'pointer', transition: 'transform 0.2s' }}>
+                <div className="glass-card" onClick={() => setSelectedProfileName(leaderboard[2].name)} style={{ width: '200px', height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderColor: getRankColor(3), cursor: 'pointer', transition: 'transform 0.2s' }}>
                   <div style={{ fontSize: '32px', marginBottom: '8px' }}>🥉</div>
                   <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#d97706', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
                     {leaderboard[2].name.charAt(0).toUpperCase()}
@@ -118,7 +122,7 @@ export default function Leaderboard() {
                     return (
                       <tr 
                         key={user.id} 
-                        onClick={() => navigate(`/profile/${user.id}`)}
+                        onClick={() => setSelectedProfileName(user.name)}
                         style={{ 
                           borderBottom: '1px solid rgba(255,255,255,0.1)',
                           backgroundColor: isCurrentUser ? 'rgba(37,99,235,0.1)' : 'transparent',
@@ -160,6 +164,13 @@ export default function Leaderboard() {
           </>
         )}
       </main>
+
+      {selectedProfileName && (
+        <UserProfileModal 
+          queryName={selectedProfileName} 
+          onClose={() => setSelectedProfileName(null)} 
+        />
+      )}
     </div>
   );
 }

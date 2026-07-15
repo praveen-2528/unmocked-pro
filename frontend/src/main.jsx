@@ -1,3 +1,4 @@
+import useAuthStore from './store/useAuthStore';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -27,7 +28,7 @@ if ('serviceWorker' in navigator && 'PushManager' in window) {
       const registration = await navigator.serviceWorker.register('/sw.js');
       console.log('Service Worker registered with scope:', registration.scope);
       
-      const user = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+      const user = useAuthStore.getState().user;
       if (user.id) {
         // Request permission
         const permission = await Notification.requestPermission();

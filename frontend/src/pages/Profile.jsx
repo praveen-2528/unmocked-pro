@@ -1,3 +1,4 @@
+import useAuthStore from '../store/useAuthStore';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -11,7 +12,8 @@ import {
     ChevronLeft, Award, Clock, Eye, CheckCircle, XCircle, 
     RefreshCw, Flame, Sparkles, Lock, Trophy, Calendar, BookOpen, X 
 } from 'lucide-react';
-import './Profile.css';
+import styles from './Profile.module.css';
+const cx = (...classes) => classes.filter(Boolean).flatMap(c => String(c).split(' ')).map(c => styles[c] || c).join(' ').trim();
 
 const ProfileInner = () => {
     const navigate = useNavigate();
@@ -203,10 +205,10 @@ const ProfileInner = () => {
         };
 
         return (
-            <Card className="heatmap-card glass">
-                <h3 className="heatmap-title">🌡️ Time Difficulty Heatmap</h3>
-                <p className="heatmap-subtitle">Color shows time spent vs average ({formatTime(Math.round(avgTime))})</p>
-                <div className="heatmap-grid">
+            <Card className={cx('heatmap-card', 'glass')}>
+                <h3 className={cx('heatmap-title')}>🌡️ Time Difficulty Heatmap</h3>
+                <p className={cx('heatmap-subtitle')}>Color shows time spent vs average ({formatTime(Math.round(avgTime))})</p>
+                <div className={cx('heatmap-grid')}>
                     {questions.map((_, idx) => {
                         const time = timeSpent[idx] || 0;
                         const userAnswer = selectedExamDetail.answers?.[idx];
@@ -214,13 +216,13 @@ const ProfileInner = () => {
                         return (
                             <div
                                 key={idx}
-                                className={`heatmap-cell ${userAnswer === undefined ? 'skipped' : ''}`}
+                                className={cx('heatmap-cell', userAnswer === undefined ? 'skipped' : '')}
                                 style={{ background: getHeatColor(time) }}
                                 title={`Q${idx + 1}: ${formatTime(time)}${userAnswer !== undefined ? (isCorrect ? ' ✅' : ' ❌') : ' (skipped)'}`}
                             >
-                                <span className="heatmap-num">{idx + 1}</span>
+                                <span className={cx('heatmap-num')}>{idx + 1}</span>
                                 {userAnswer !== undefined && (
-                                    <span className={`heatmap-dot ${isCorrect ? 'correct' : 'wrong'}`}></span>
+                                    <span className={cx('heatmap-dot', isCorrect ? 'correct' : 'wrong')}></span>
                                 )}
                             </div>
                         );
@@ -232,19 +234,19 @@ const ProfileInner = () => {
 
     if (loading) {
         return (
-            <div className="profile-container animate-fade-in">
-                <div className="loading-screen"><div className="loading-spinner" /></div>
+            <div className={cx('profile-container', 'animate-fade-in')}>
+                <div className={cx('loading-screen')}><div className={cx('loading-spinner')} /></div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="profile-container animate-fade-in">
-                <div className="profile-header-back">
+            <div className={cx('profile-container', 'animate-fade-in')}>
+                <div className={cx('profile-header-back')}>
                     <Button variant="ghost" onClick={() => navigate('/')}><ChevronLeft size={16} /> Back</Button>
                 </div>
-                <Card className="error-state glass">
+                <Card className={cx('error-state', 'glass')}>
                     <h2>Profile Loading Error</h2>
                     <p>⚠️ {error}</p>
                     <Button variant="primary" onClick={() => navigate('/')}>Return to Lobby</Button>
@@ -254,27 +256,27 @@ const ProfileInner = () => {
     }
 
     return (
-        <div className="profile-container animate-fade-in">
+        <div className={cx('profile-container', 'animate-fade-in')}>
             {/* Header Back Link */}
-            <div className="profile-header-back">
+            <div className={cx('profile-header-back')}>
                 <Button variant="ghost" onClick={() => navigate(-1)}><ChevronLeft size={16} /> Back</Button>
             </div>
 
             {/* Profile Overview Card */}
             {profile && !selectedExamDetail && !loadingExamDetail && (
-                <div className="profile-grid">
+                <div className={cx('profile-grid')}>
                     {/* Left Column: Profile Card + Level + Badges */}
-                    <div className="profile-main-col">
-                        <Card className="profile-info-card glass">
-                            <div className="profile-meta-row">
-                                <div className="profile-avatar">
+                    <div className={cx('profile-main-col')}>
+                        <Card className={cx('profile-info-card', 'glass')}>
+                            <div className={cx('profile-meta-row')}>
+                                <div className={cx('profile-avatar')}>
                                     {(profile.name || "").charAt(0).toUpperCase()}
                                 </div>
-                                <div className="profile-details">
+                                <div className={cx('profile-details')}>
                                     <h2>{profile.name}</h2>
-                                    <span className="profile-email-text">{profile.email}</span>
-                                    <div className="profile-level-badge">
-                                        <Sparkles size={12} className="text-yellow-400" />
+                                    <span className={cx('profile-email-text')}>{profile.email}</span>
+                                    <div className={cx('profile-level-badge')}>
+                                        <Sparkles size={12} className={cx('text-yellow-400')} />
                                         <span>Level {levelMetrics.level} Enthusiast</span>
                                     </div>
                                 </div>
@@ -282,50 +284,50 @@ const ProfileInner = () => {
                         </Card>
 
                         {/* Level and Streak Stats Row */}
-                        <div className="profile-stats-grid">
-                            <Card className="profile-level-card glass">
-                                <div className="level-gauge-wrapper">
-                                    <div className="level-gauge">
-                                        <svg viewBox="0 0 100 100" className="radial-progress">
-                                            <circle cx="50" cy="50" r="40" className="radial-bg" />
+                        <div className={cx('profile-stats-grid')}>
+                            <Card className={cx('profile-level-card', 'glass')}>
+                                <div className={cx('level-gauge-wrapper')}>
+                                    <div className={cx('level-gauge')}>
+                                        <svg viewBox="0 0 100 100" className={cx('radial-progress')}>
+                                            <circle cx="50" cy="50" r="40" className={cx('radial-bg')} />
                                             <circle 
                                                 cx="50" 
                                                 cy="50" 
                                                 r="40" 
-                                                className="radial-fill" 
+                                                className={cx('radial-fill')} 
                                                 style={{ strokeDasharray: `${2 * Math.PI * 40}`, strokeDashoffset: `${2 * Math.PI * 40 * (1 - levelMetrics.progressPercent / 100)}` }}
                                             />
                                         </svg>
-                                        <div className="level-gauge-text">
-                                            <span className="lvl-num">{levelMetrics.level}</span>
-                                            <span className="lvl-lbl">LEVEL</span>
+                                        <div className={cx('level-gauge-text')}>
+                                            <span className={cx('lvl-num')}>{levelMetrics.level}</span>
+                                            <span className={cx('lvl-lbl')}>LEVEL</span>
                                         </div>
                                     </div>
-                                    <div className="level-info">
-                                        <h3 className="lvl-header">Rank Status</h3>
-                                        <p className="xp-details">
-                                            <Sparkles size={12} className="xp-icon" /> 
+                                    <div className={cx('level-info')}>
+                                        <h3 className={cx('lvl-header')}>Rank Status</h3>
+                                        <p className={cx('xp-details')}>
+                                            <Sparkles size={12} className={cx('xp-icon')} /> 
                                             <strong>{levelMetrics.xp} XP</strong> total
                                         </p>
-                                        <div className="xp-progress-bar-bg">
-                                            <div className="xp-progress-bar-fill" style={{ width: `${levelMetrics.progressPercent}%` }}></div>
+                                        <div className={cx('xp-progress-bar-bg')}>
+                                            <div className={cx('xp-progress-bar-fill')} style={{ width: `${levelMetrics.progressPercent}%` }}></div>
                                         </div>
-                                        <p className="xp-remaining">
+                                        <p className={cx('xp-remaining')}>
                                             {profile.nextLevelXp - levelMetrics.xp} XP to Level {levelMetrics.level + 1}
                                         </p>
                                     </div>
                                 </div>
                             </Card>
 
-                            <Card className="profile-streak-card glass">
-                                <div className="streak-flame-wrapper">
-                                    <div className="streak-flame">
-                                        <Flame size={44} className="flame-icon pulsing" />
+                            <Card className={cx('profile-streak-card', 'glass')}>
+                                <div className={cx('streak-flame-wrapper')}>
+                                    <div className={cx('streak-flame')}>
+                                        <Flame size={44} className={cx('flame-icon', 'pulsing')} />
                                     </div>
-                                    <div className="streak-info">
-                                        <h3 className="streak-header">Testing Streak</h3>
-                                        <span className="streak-count">{profile.streak} Day{profile.streak !== 1 ? 's' : ''}</span>
-                                        <p className="streak-message">
+                                    <div className={cx('streak-info')}>
+                                        <h3 className={cx('streak-header')}>Testing Streak</h3>
+                                        <span className={cx('streak-count')}>{profile.streak} Day{profile.streak !== 1 ? 's' : ''}</span>
+                                        <p className={cx('streak-message')}>
                                             {profile.streak > 0 
                                                 ? 'Active mock testing streak is burning bright!'
                                                 : 'Take daily tests to build up a learning streak.'}
@@ -341,42 +343,42 @@ const ProfileInner = () => {
                         )}
 
                         {/* Consistency Calendar Widget */}
-                        <div className="calendar-section">
+                        <div className={cx('calendar-section')}>
                             <ContributionCalendar activity={profile.activity || {}} />
                         </div>
 
                         {/* Badges Showcase Widget */}
-                        <Card className="badges-showcase-card glass">
+                        <Card className={cx('badges-showcase-card', 'glass')}>
                             <h3>Achievements Showcase</h3>
-                            <p className="badges-subtitle">Badges unlocked by completing tests with high accuracy and speed</p>
+                            <p className={cx('badges-subtitle')}>Badges unlocked by completing tests with high accuracy and speed</p>
                             
-                            <div className="badges-showcase-grid">
+                            <div className={cx('badges-showcase-grid')}>
                                 {(profile.badges || []).map((badge) => (
                                     <div 
                                         key={badge.key} 
-                                        className={`badge-item-wrap ${badge.isUnlocked ? 'unlocked' : 'locked'}`}
+                                        className={cx('badge-item-wrap', badge.isUnlocked ? 'unlocked' : 'locked')}
                                         onClick={() => setSelectedBadge(badge)}
                                     >
-                                        <div className="badge-visual-container">
+                                        <div className={cx('badge-visual-container')}>
                                             <BadgeIcon badgeKey={badge.key} size={68} animated={badge.isUnlocked} />
                                             {badge.isUnlocked && badge.earnedCount > 1 && (
-                                                <div className="badge-multiplier">x{badge.earnedCount}</div>
+                                                <div className={cx('badge-multiplier')}>x{badge.earnedCount}</div>
                                             )}
                                             {!badge.isUnlocked && (
-                                                <div className="badge-lock-shield">
-                                                    <Lock size={15} className="lock-svg" />
+                                                <div className={cx('badge-lock-shield')}>
+                                                    <Lock size={15} className={cx('lock-svg')} />
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="badge-details-box">
-                                            <span className="badge-name-text">{badge.name}</span>
-                                            <span className="badge-desc-text">{badge.description}</span>
+                                        <div className={cx('badge-details-box')}>
+                                            <span className={cx('badge-name-text')}>{badge.name}</span>
+                                            <span className={cx('badge-desc-text')}>{badge.description}</span>
                                             {badge.isUnlocked ? (
-                                                <span className="badge-earned-label">
+                                                <span className={cx('badge-earned-label')}>
                                                     Unlocked {badge.earnedAt ? formatDate(badge.earnedAt) : 'Recently'}
                                                 </span>
                                             ) : (
-                                                <span className="badge-locked-label">Locked</span>
+                                                <span className={cx('badge-locked-label')}>Locked</span>
                                             )}
                                         </div>
                                     </div>
@@ -386,34 +388,34 @@ const ProfileInner = () => {
                     </div>
 
                     {/* Right Column: Recent Tests Summary */}
-                    <div className="profile-sidebar-col">
-                        <Card className="profile-recent-card glass">
-                            <div className="sidebar-recent-header">
-                                <BookOpen size={20} className="sidebar-recent-icon" />
+                    <div className={cx('profile-sidebar-col')}>
+                        <Card className={cx('profile-recent-card', 'glass')}>
+                            <div className={cx('sidebar-recent-header')}>
+                                <BookOpen size={20} className={cx('sidebar-recent-icon')} />
                                 <h3>Test History ({history.length})</h3>
                             </div>
                             
-                            <div className="sidebar-tests-list">
+                            <div className={cx('sidebar-tests-list')}>
                                 {history.length === 0 ? (
-                                    <div className="sidebar-tests-empty">
+                                    <div className={cx('sidebar-tests-empty')}>
                                         <p>No test attempts found.</p>
                                     </div>
                                 ) : (
                                     history.map((h) => (
                                         <div 
                                             key={h.id} 
-                                            className="sidebar-test-row hover-lift"
+                                            className={cx('sidebar-test-row', 'hover-lift')}
                                             onClick={() => handleSelectExam(h.id)}
                                         >
-                                            <div className="sidebar-test-details">
-                                                <span className="s-exam-type">{(h.examType || "").toUpperCase()} Mock</span>
-                                                <span className="s-exam-date">{formatDate(h.date)}</span>
+                                            <div className={cx('sidebar-test-details')}>
+                                                <span className={cx('s-exam-type')}>{(h.examType || "").toUpperCase()} Mock</span>
+                                                <span className={cx('s-exam-date')}>{formatDate(h.date)}</span>
                                             </div>
-                                            <div className="sidebar-test-score">
-                                                <span className={`s-pct-badge ${h.percentage >= 70 ? 'good' : h.percentage >= 40 ? 'avg' : 'low'}`}>
+                                            <div className={cx('sidebar-test-score')}>
+                                                <span className={cx('s-pct-badge', h.percentage >= 70 ? 'good' : h.percentage >= 40 ? 'avg' : 'low')}>
                                                     {h.percentage?.toFixed(0)}%
                                                 </span>
-                                                <span className="s-raw-score">{h.score}/{h.total}</span>
+                                                <span className={cx('s-raw-score')}>{h.score}/{h.total}</span>
                                             </div>
                                         </div>
                                     ))
@@ -425,24 +427,24 @@ const ProfileInner = () => {
             )}
 
             {loadingExamDetail && (
-                <div className="loading-screen" style={{ minHeight: '300px' }}><div className="loading-spinner" /></div>
+                <div className={cx('loading-screen')} style={{ minHeight: '300px' }}><div className={cx('loading-spinner')} /></div>
             )}
 
             {/* Detailed Exam Breakdown Review View */}
             {selectedExamDetail && !loadingExamDetail && (
-                <div className="profile-exam-detail animate-fade-in">
-                    <Card className="exam-detail-header-card glass">
-                        <div className="upm-detail-nav" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
+                <div className={cx('profile-exam-detail', 'animate-fade-in')}>
+                    <Card className={cx('exam-detail-header-card', 'glass')}>
+                        <div className={cx('upm-detail-nav')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <Button variant="ghost" className="btn-sm" onClick={() => setSelectedExamDetail(null)}>
+                                <Button variant="ghost" className={cx('btn-sm')} onClick={() => setSelectedExamDetail(null)}>
                                     <ChevronLeft size={16} /> Back to Profile Summary
                                 </Button>
-                                <span className="upm-detail-title">
+                                <span className={cx('upm-detail-title')}>
                                     {(selectedExamDetail.examType || "").toUpperCase()} Exam Breakdown — Score: {selectedExamDetail.score}/{selectedExamDetail.total} ({selectedExamDetail.percentage}%)
                                 </span>
                             </div>
                             {selectedExamDetail.isMultiplayer && selectedExamDetail.testCode && (
-                                <Button variant="primary" className="btn-sm" onClick={() => loadHistoricalLeaderboard(selectedExamDetail.testCode)} disabled={loadingLeaderboard}>
+                                <Button variant="primary" className={cx('btn-sm')} onClick={() => loadHistoricalLeaderboard(selectedExamDetail.testCode)} disabled={loadingLeaderboard}>
                                     <Trophy size={16} style={{marginRight: '6px'}} /> {loadingLeaderboard ? 'Loading...' : 'View Multiplayer Leaderboard'}
                                 </Button>
                             )}
@@ -453,19 +455,19 @@ const ProfileInner = () => {
                     {selectedExamDetail.timeSpent && renderHeatmap(selectedExamDetail.timeSpent, selectedExamDetail.questions)}
 
                     {/* Questions review with reattempt option */}
-                    <div className="upm-questions-review">
-                        <div className="review-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <h3 className="section-title" style={{ margin: 0 }}>📋 Detailed Questions Review & Reattempt</h3>
-                            <div className="reattempt-toggle-container glass" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <div className={cx('upm-questions-review')}>
+                        <div className={cx('review-header-row')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <h3 className={cx('section-title')} style={{ margin: 0 }}>📋 Detailed Questions Review & Reattempt</h3>
+                            <div className={cx('reattempt-toggle-container', 'glass')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                                 <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>🧠 Reattempt Mode</span>
-                                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
+                                <label className={cx('switch')} style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
                                     <input 
                                         type="checkbox" 
                                         checked={reattemptMode} 
                                         onChange={(e) => setReattemptMode(e.target.checked)} 
                                         style={{ opacity: 0, width: 0, height: 0 }}
                                     />
-                                    <span className="slider" style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, background: reattemptMode ? 'var(--primary)' : 'rgba(255,255,255,0.1)', transition: '.3s', borderRadius: '20px' }}>
+                                    <span className={cx('slider')} style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, background: reattemptMode ? 'var(--primary)' : 'rgba(255,255,255,0.1)', transition: '.3s', borderRadius: '20px' }}>
                                         <span style={{ position: 'absolute', content: '""', height: '14px', width: '14px', left: reattemptMode ? '22px' : '3px', bottom: '3px', background: 'white', transition: '.3s', borderRadius: '50%' }}></span>
                                     </span>
                                 </label>
@@ -485,30 +487,30 @@ const ProfileInner = () => {
                             const isReattempted = chosenIdx !== undefined;
 
                             return (
-                                <Card key={idx} className={`review-card ${cardBorderClass} mb-4`}>
-                                    <div className="review-q-header">
+                                <Card key={idx} className={cx('review-card', cardBorderClass, 'mb-4')}>
+                                    <div className={cx('review-q-header')}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <span className="q-number">Question {idx + 1}</span>
+                                            <span className={cx('q-number')}>Question {idx + 1}</span>
                                             {selectedExamDetail.timeSpent?.[idx] > 0 && (
-                                                <span className="q-time text-slate-400" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                                                <span className={cx('q-time', 'text-slate-400')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
                                                     <Clock size={14} /> {formatTime(selectedExamDetail.timeSpent[idx])}
                                                 </span>
                                             )}
                                         </div>
                                         {!reattemptMode && (
-                                            <div className="q-status">
-                                                {!isAttempted && <span className="status-badge skipped">Skipped</span>}
-                                                {isAttempted && isCorrect && <span className="status-badge correct"><CheckCircle size={14} /> Correct</span>}
-                                                {isAttempted && !isCorrect && <span className="status-badge incorrect"><XCircle size={14} /> Incorrect</span>}
+                                            <div className={cx('q-status')}>
+                                                {!isAttempted && <span className={cx('status-badge', 'skipped')}>Skipped</span>}
+                                                {isAttempted && isCorrect && <span className={cx('status-badge', 'correct')}><CheckCircle size={14} /> Correct</span>}
+                                                {isAttempted && !isCorrect && <span className={cx('status-badge', 'incorrect')}><XCircle size={14} /> Incorrect</span>}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="review-q-text mb-4">
+                                    <div className={cx('review-q-text', 'mb-4')}>
                                         <QuestionRenderer text={q.text} subject={q.subject} />
                                     </div>
 
-                                    <div className="review-options mb-3">
+                                    <div className={cx('review-options', 'mb-3')}>
                                         {q.options.map((opt, optIdx) => {
                                             let optClass = "review-opt ";
                                             if (!reattemptMode) {
@@ -533,18 +535,18 @@ const ProfileInner = () => {
                                                     }}
                                                     style={{ cursor: (reattemptMode && !isReattempted) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', padding: '1rem', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '0.75rem' }}
                                                 >
-                                                    <span className="opt-letter" style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px', marginRight: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{String.fromCharCode(65 + optIdx)}</span>
-                                                    <span className="opt-text" style={{ flex: 1 }}>{opt}</span>
+                                                    <span className={cx('opt-letter')} style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px', marginRight: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{String.fromCharCode(65 + optIdx)}</span>
+                                                    <span className={cx('opt-text')} style={{ flex: 1 }}>{opt}</span>
                                                     {!reattemptMode ? (
                                                         <>
-                                                            {optIdx === q.correctAnswer && <CheckCircle className="opt-icon success" style={{ marginLeft: '1rem', color: '#34d399' }} size={16} />}
-                                                            {userAnswer === optIdx && !isCorrect && <XCircle className="opt-icon danger" style={{ marginLeft: '1rem', color: '#f87171' }} size={16} />}
+                                                            {optIdx === q.correctAnswer && <CheckCircle className={cx('opt-icon', 'success')} style={{ marginLeft: '1rem', color: '#34d399' }} size={16} />}
+                                                            {userAnswer === optIdx && !isCorrect && <XCircle className={cx('opt-icon', 'danger')} style={{ marginLeft: '1rem', color: '#f87171' }} size={16} />}
                                                         </>
                                                     ) : (
                                                         isReattempted && (
                                                             <>
-                                                                {optIdx === q.correctAnswer && <CheckCircle className="opt-icon success" style={{ marginLeft: '1rem', color: '#34d399' }} size={16} />}
-                                                                {optIdx === chosenIdx && chosenIdx !== q.correctAnswer && <XCircle className="opt-icon danger" style={{ marginLeft: '1rem', color: '#f87171' }} size={16} />}
+                                                                {optIdx === q.correctAnswer && <CheckCircle className={cx('opt-icon', 'success')} style={{ marginLeft: '1rem', color: '#34d399' }} size={16} />}
+                                                                {optIdx === chosenIdx && chosenIdx !== q.correctAnswer && <XCircle className={cx('opt-icon', 'danger')} style={{ marginLeft: '1rem', color: '#f87171' }} size={16} />}
                                                             </>
                                                         )
                                                     )}
@@ -554,7 +556,7 @@ const ProfileInner = () => {
                                     </div>
 
                                     {reattemptMode && (
-                                        <div className="reattempt-feedback-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingBottom: '1rem', borderBottom: isReattempted && q.explanation ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                                        <div className={cx('reattempt-feedback-row')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingBottom: '1rem', borderBottom: isReattempted && q.explanation ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                                 <span>First Attempt: </span>
                                                 {isAttempted ? (
@@ -589,7 +591,7 @@ const ProfileInner = () => {
                                     )}
 
                                     {(!reattemptMode || isReattempted) && q.explanation && (
-                                        <div className="explanation-box mb-4" style={{ marginTop: reattemptMode ? '1rem' : '0' }}>
+                                        <div className={cx('explanation-box', 'mb-4')} style={{ marginTop: reattemptMode ? '1rem' : '0' }}>
                                             <h5>Explanation</h5>
                                             <p>{q.explanation}</p>
                                         </div>
@@ -602,23 +604,23 @@ const ProfileInner = () => {
             )}
 
             {selectedBadge && (
-                <div className="badge-modal-backdrop" onClick={() => setSelectedBadge(null)}>
-                    <div className="badge-modal-card glass" onClick={(e) => e.stopPropagation()}>
-                        <button className="badge-modal-close" onClick={() => setSelectedBadge(null)}>
+                <div className={cx('badge-modal-backdrop')} onClick={() => setSelectedBadge(null)}>
+                    <div className={cx('badge-modal-card', 'glass')} onClick={(e) => e.stopPropagation()}>
+                        <button className={cx('badge-modal-close')} onClick={() => setSelectedBadge(null)}>
                             <X size={16} />
                         </button>
-                        <div className="badge-modal-visual">
+                        <div className={cx('badge-modal-visual')}>
                             <BadgeIcon badgeKey={selectedBadge.key} size={80} animated={selectedBadge.isUnlocked} />
                             {!selectedBadge.isUnlocked && (
-                                <div className="badge-modal-lock">
+                                <div className={cx('badge-modal-lock')}>
                                     <Lock size={16} />
                                 </div>
                             )}
                         </div>
-                        <h3 className="badge-modal-name">{selectedBadge.name}</h3>
-                        <p className="badge-modal-desc">{selectedBadge.description}</p>
+                        <h3 className={cx('badge-modal-name')}>{selectedBadge.name}</h3>
+                        <p className={cx('badge-modal-desc')}>{selectedBadge.description}</p>
                         
-                        <div className={`badge-modal-status ${selectedBadge.isUnlocked ? 'unlocked' : 'locked'}`}>
+                        <div className={cx('badge-modal-status', selectedBadge.isUnlocked ? 'unlocked' : 'locked')}>
                             {selectedBadge.isUnlocked ? (
                                 <>
                                     <CheckCircle size={16} />
@@ -637,21 +639,21 @@ const ProfileInner = () => {
 
             {/* Historical Leaderboard Modal */}
             {historicalLeaderboard && (
-                <div className="modal-overlay" onClick={() => setHistoricalLeaderboard(null)} style={{ zIndex: 9999 }}>
-                    <div className="modal-content glass" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', padding: '1.5rem', borderRadius: '16px' }}>
-                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div className={cx('modal-overlay')} onClick={() => setHistoricalLeaderboard(null)} style={{ zIndex: 9999 }}>
+                    <div className={cx('modal-content', 'glass')} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', padding: '1.5rem', borderRadius: '16px' }}>
+                        <div className={cx('modal-header')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}><Trophy size={24} color="#facc15" /> Multiplayer Leaderboard</h2>
-                            <button className="icon-btn" onClick={() => setHistoricalLeaderboard(null)}><X size={20} /></button>
+                            <button className={cx('icon-btn')} onClick={() => setHistoricalLeaderboard(null)}><X size={20} /></button>
                         </div>
-                        <div className="modal-body">
+                        <div className={cx('modal-body')}>
                             {historicalLeaderboard.length === 0 ? (
                                 <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No leaderboard data found for this room.</p>
                             ) : (
-                                <div className="leaderboard-list">
+                                <div className={cx('leaderboard-list')}>
                                     {historicalLeaderboard.map((player, idx) => (
-                                        <div key={player.playerId} className={`leaderboard-item`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', background: idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : idx === 2 ? 'rgba(205,127,50,0.1)' : 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '8px' }}>
+                                        <div key={player.playerId} className={cx('leaderboard-item')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', background: idx === 0 ? 'rgba(255,215,0,0.1)' : idx === 1 ? 'rgba(192,192,192,0.1)' : idx === 2 ? 'rgba(205,127,50,0.1)' : 'rgba(255,255,255,0.03)', borderRadius: '8px', marginBottom: '8px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <div className="rank-circle" style={{ width: '36px', height: '36px', borderRadius: '50%', background: idx === 0 ? '#facc15' : idx === 1 ? '#9ca3af' : idx === 2 ? '#b45309' : 'rgba(255,255,255,0.1)', color: idx < 3 ? '#000' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                                <div className={cx('rank-circle')} style={{ width: '36px', height: '36px', borderRadius: '50%', background: idx === 0 ? '#facc15' : idx === 1 ? '#9ca3af' : idx === 2 ? '#b45309' : 'rgba(255,255,255,0.1)', color: idx < 3 ? '#000' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>
                                                     {idx + 1}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>

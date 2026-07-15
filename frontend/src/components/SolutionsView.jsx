@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, Check, Eye } from 'lucide-react';
 import QuestionRenderer from './QuestionRenderer';
-import '../pages/Test.css'; // Reuse Test UI styles
+import styles from '../pages/Test.module.css';
+const cx = (...classes) => classes.filter(Boolean).map(c => styles[c] || c).join(' '); // Reuse Test UI styles
 
 const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -89,24 +90,24 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
     };
 
     return (
-        <div className="test-engine-container animate-fade-in" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, background: 'var(--bg-color)' }}>
-            <header className="te-top-header" style={{ position: 'relative' }}>
-                <div className="te-header-left">
-                    <button className="te-btn" onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '0.5rem', background: 'transparent', color: 'var(--text-primary)', border: 'none', cursor: 'pointer' }}>
+        <div className={cx('test-engine-container', 'animate-fade-in')} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, background: 'var(--bg-color)' }}>
+            <header className={cx('te-top-header')} style={{ position: 'relative' }}>
+                <div className={cx('te-header-left')}>
+                    <button className={cx('te-btn')} onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '0.5rem', background: 'transparent', color: 'var(--text-primary)', border: 'none', cursor: 'pointer' }}>
                         <ChevronLeft size={16} /> Back to Summary
                     </button>
-                    <div className="te-logo" style={{ marginLeft: '1rem' }}>
+                    <div className={cx('te-logo')} style={{ marginLeft: '1rem' }}>
                         <h1>UnMocked</h1>
                         <span>SOLUTIONS</span>
                     </div>
                 </div>
             </header>
 
-            <div className="te-main-area">
+            <div className={cx('te-main-area')}>
                 {/* Left Pane (Question & Explanation) */}
-                <div className="te-left-pane">
-                    <div className="te-question-header" style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span className="te-question-no">Question No. {currentIndex + 1}</span>
+                <div className={cx('te-left-pane')}>
+                    <div className={cx('te-question-header')} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className={cx('te-question-no')}>Question No. {currentIndex + 1}</span>
                         
                         {!reattemptMode && (
                             <span style={{
@@ -127,7 +128,7 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                         </div>
                     </div>
 
-                    <div className="te-question-content" style={{ flex: 1, overflowY: 'auto' }}>
+                    <div className={cx('te-question-content')} style={{ flex: 1, overflowY: 'auto' }}>
                         {q ? (
                             <>
                                 <QuestionRenderer text={q.question_text || q.text || ''} />
@@ -138,7 +139,7 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                                     </div>
                                 )}
 
-                                <div className="te-options-list">
+                                <div className={cx('te-options-list')}>
                                     {q.options && q.options.map((opt, i) => (
                                         <div 
                                             key={i} 
@@ -152,8 +153,8 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                                                             getOptionClass(i).includes('revealed-wrong') ? 'rgba(239, 68, 68, 0.1)' : undefined
                                             }}
                                         >
-                                            <div className="option-marker">{String.fromCharCode(65 + i)}</div>
-                                            <div className="option-text">{opt}</div>
+                                            <div className={cx('option-marker')}>{String.fromCharCode(65 + i)}</div>
+                                            <div className={cx('option-text')}>{opt}</div>
                                             {getOptionClass(i).includes('revealed-correct') && <CheckCircle size={18} color="#10b981" style={{ marginLeft: 'auto' }} />}
                                             {getOptionClass(i).includes('revealed-wrong') && <XCircle size={18} color="#ef4444" style={{ marginLeft: 'auto' }} />}
                                         </div>
@@ -161,7 +162,7 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                                 </div>
 
                                 {showSolution && (
-                                    <div className="explanation-box" style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6', borderRadius: '4px' }}>
+                                    <div className={cx('explanation-box')} style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6', borderRadius: '4px' }}>
                                         <h4 style={{ color: '#3b82f6', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Check size={18} /> Solution & Explanation
                                         </h4>
@@ -177,9 +178,9 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                     </div>
                     
                     {/* Bottom Action Bar inside Left Pane */}
-                    <div className="te-action-bar" style={{ background: 'var(--card-bg)', borderTop: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', padding: '10px 20px' }}>
+                    <div className={cx('te-action-bar')} style={{ background: 'var(--card-bg)', borderTop: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', padding: '10px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <button className="te-btn" onClick={handlePrev} disabled={currentIndex === 0}>
+                            <button className={cx('te-btn')} onClick={handlePrev} disabled={currentIndex === 0}>
                                 <ChevronLeft size={16} /> Previous
                             </button>
                         </div>
@@ -196,12 +197,12 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                             </label>
                             
                             {!showSolution && (
-                                <button className="te-btn submit" onClick={() => setShowSolution(true)} style={{ background: 'var(--primary)', color: '#fff' }}>
+                                <button className={cx('te-btn', 'submit')} onClick={() => setShowSolution(true)} style={{ background: 'var(--primary)', color: '#fff' }}>
                                     <Eye size={16} /> View Solution
                                 </button>
                             )}
 
-                            <button className="te-btn" onClick={handleNext} disabled={currentIndex === questions.length - 1}>
+                            <button className={cx('te-btn')} onClick={handleNext} disabled={currentIndex === questions.length - 1}>
                                 Next <ChevronRight size={16} />
                             </button>
                         </div>
@@ -209,13 +210,13 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                 </div>
 
                 {/* Right Pane (Palette) */}
-                <div className="te-right-pane">
-                    <div className="te-palette-section" style={{ flex: 1, overflowY: 'auto' }}>
-                        <div className="te-palette-header">
+                <div className={cx('te-right-pane')}>
+                    <div className={cx('te-palette-section')} style={{ flex: 1, overflowY: 'auto' }}>
+                        <div className={cx('te-palette-header')}>
                             <h3>Question Palette</h3>
                         </div>
                         
-                        <div className="te-palette-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '10px', fontSize: '0.8rem', background: 'rgba(0,0,0,0.2)', marginBottom: '10px' }}>
+                        <div className={cx('te-palette-legend')} style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '10px', fontSize: '0.8rem', background: 'rgba(0,0,0,0.2)', marginBottom: '10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                 <div style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '50%' }}></div> Correct
                             </div>
@@ -227,7 +228,7 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                             </div>
                         </div>
 
-                        <div className="te-palette-grid">
+                        <div className={cx('te-palette-grid')}>
                             {questions.map((_, i) => {
                                 const status = getPaletteStatus(i);
                                 let bg = 'var(--card-bg)';
@@ -249,7 +250,7 @@ const SolutionsView = ({ questions, answers, timeSpent, markingScheme, onClose }
                                 return (
                                     <button 
                                         key={i} 
-                                        className="te-palette-btn"
+                                        className={cx('te-palette-btn')}
                                         onClick={() => {
                                             setCurrentIndex(i);
                                             setShowSolution(false);

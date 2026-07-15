@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { Save, Lock, LogOut, Mail, Calendar, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/useAuthStore';
+
 
 export default function Settings() {
-  const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+  const currentUser = useAuthStore(state => state.user);
   const navigate = useNavigate();
 
   const [name, setName] = useState(currentUser?.name || '');
@@ -29,7 +31,7 @@ export default function Settings() {
       });
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('unmocked_user', JSON.stringify({ ...currentUser, name: data.name }));
+        useAuthStore.getState().setUser({ ...currentUser, name: data.name });
         setNameMsg('Name updated successfully!');
         setTimeout(() => setNameMsg(''), 3000);
       } else {
@@ -67,7 +69,7 @@ export default function Settings() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('unmocked_user');
+    useAuthStore.getState().logout();
     navigate('/');
   };
 

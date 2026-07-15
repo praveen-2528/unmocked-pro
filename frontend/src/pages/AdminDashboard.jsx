@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Settings, Users, Key, Plus, Trash2, Edit3, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/useAuthStore';
+
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ export default function AdminDashboard() {
   const [showBlueprintForm, setShowBlueprintForm] = useState(false);
   const [bpForm, setBpForm] = useState(defaultBpForm);
 
-  const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+  const currentUser = useAuthStore(state => state.user);
 
   useEffect(() => {
     if (!currentUser || !currentUser.is_admin) navigate('/');
@@ -175,7 +177,7 @@ export default function AdminDashboard() {
               Download DB Backup
             </button>
             <button className="btn btn-glass" onClick={() => {
-              localStorage.removeItem('unmocked_user');
+              useAuthStore.getState().logout();
               navigate('/');
             }}>Log Out</button>
           </div>

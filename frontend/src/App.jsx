@@ -19,6 +19,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/home" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/test/:sessionId" element={<TestEngine />} />
       <Route path="/test" element={<TestEngine />} />
       <Route path="/review/:resultId" element={<TestEngine />} />
       <Route path="/study-room/:groupId" element={<StudyRoom />} />

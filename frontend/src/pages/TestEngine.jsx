@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Clock, CheckCircle2, AlertCircle, Bookmark, ChevronRight, XCircle, MessageCircle, BarChart2, Users, FastForward, Send } from 'lucide-react';
 import { socket } from '../socket';
 import Results from '../components/Results';
@@ -7,7 +7,9 @@ import '../TestEngine.css';
 
 export default function TestEngine() {
   const navigate = useNavigate();
-  const { resultId } = useParams();
+  const { resultId, sessionId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentView = searchParams.get('view') || 'instructions';
   const [testData, setTestData] = useState(null);
   
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
@@ -109,7 +111,7 @@ export default function TestEngine() {
           });
           setIsSubmitted(false);
           setReviewMode(true);
-          setShowInstructions(false);
+          setSearchParams({ view: 'review' });
         })
         .catch(err => {
           console.error(err);
@@ -138,18 +140,55 @@ export default function TestEngine() {
         setIsSubmitted(true);
       }
     } else {
-      setTestSessionId(localStorage.getItem('current_test_session_id') || 'solo-' + Date.now());
+      setTestSessionId(sessionId || localStorage.getItem('current_test_session_id') || 'solo-' + Date.now());
     }
 
-    // Initialize Timer (Only for Real modes)
-    if (!mode.endsWith('Friendly')) {
+    const savedProgress = localStorage.getItem('test_progress_' + (sessionId || mpRoom?.code || ''));
+    if (savedProgress) {
+        try {
+            const p = JSON.parse(savedProgress);
+            if (p.currentSectionIdx !== undefined) setCurrentSectionIdx(p.currentSectionIdx);
+            if (p.currentQuestionIdx !== undefined) setCurrentQuestionIdx(p.currentQuestionIdx);
+            if (p.timeLeft !== undefined && p.timeLeft > 0) setTimeLeft(p.timeLeft);
+        } catch(e) {}
+    } else if (!mode.endsWith('Friendly')) {
       if (data.blueprint.has_sectional_timing) {
         setTimeLeft((data.sections[0].duration || 15) * 60);
       } else {
         setTimeLeft((data.blueprint.total_duration || 60) * 60);
       }
     }
-  }, [navigate]);
+  }, [navigate, sessionId]);
+
+  useEffect(() => {
+    if (currentView === 'instructions') {
+      setShowInstructions(true);
+      setIsSubmitted(false);
+      setReviewMode(false);
+    } else if (currentView === 'play') {
+      setShowInstructions(false);
+      setIsSubmitted(false);
+      setReviewMode(false);
+    } else if (currentView === 'results') {
+      setShowInstructions(false);
+      setIsSubmitted(true);
+      setReviewMode(false);
+    } else if (currentView === 'review') {
+      setShowInstructions(false);
+      setIsSubmitted(false);
+      setReviewMode(true);
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    if (currentView === 'play' && testSessionId) {
+       localStorage.setItem('test_progress_' + testSessionId, JSON.stringify({
+          currentSectionIdx,
+          currentQuestionIdx,
+          timeLeft
+       }));
+    }
+  }, [currentSectionIdx, currentQuestionIdx, timeLeft, currentView, testSessionId]);
 
   useEffect(() => {
     if (!testSessionId || !currentUser.id) return;
@@ -214,7 +253,7 @@ export default function TestEngine() {
       submitTest();
     });
     socket.on('multiplayerTestStarted', () => {
-      setShowInstructions(false);
+      setSearchParams({ view: 'play' });
     });
     
     if (isFriendly) {
@@ -558,7 +597,7 @@ export default function TestEngine() {
   const currentQuestion = currentSection.questions[currentQuestionIdx];
   const optionsLetters = ['A', 'B', 'C', 'D', 'E'];
 
-  if (showInstructions) {
+  if (currentView === 'instructions') {
     return (
       <div className="test-engine-container">
         <header className="te-top-header">
@@ -615,7 +654,7 @@ export default function TestEngine() {
                 if (isMultiplayer && isHost && !room?.testStarted) {
                   socket.emit('beginTestForAll', { code: room.code });
                 } else {
-                  setShowInstructions(false);
+                  setSearchParams({ view: 'play' });
                 }
               }}
             >
@@ -703,12 +742,12 @@ export default function TestEngine() {
                               key={i} 
                               className={`te-tab ${isActive ? 'active' : ''}`}
                               onClick={() => {
-                                  if (!isStrict) {
+                                  if (!isStrict || reviewMode) {
                                       setCurrentSectionIdx(i);
                                       setCurrentQuestionIdx(0);
                                   }
                               }}
-                              style={{ opacity: (isStrict && !isActive) ? 0.5 : 1, cursor: (!isStrict) ? 'pointer' : 'default' }}
+                              style={{ opacity: (isStrict && !isActive && !reviewMode) ? 0.5 : 1, cursor: (!isStrict || reviewMode) ? 'pointer' : 'default' }}
                           >
                               {sec.name}
                           </div>
@@ -846,7 +885,7 @@ export default function TestEngine() {
                           const isWrongSelected = isRevealed && isSelected && letter !== currentQuestion.answer;
                           const isWaiting = friendlyRevealed[currentQuestion.id] === 'waiting';
 
-                          let optionClass = `te-option-item ${isSelected ? 'selected' : ''}`;
+                          let optionClass = `te-option-item ${isSelected ? 'selected' : ''}`.trim();
                           if (isRevealed) {
                               if (isCorrect) optionClass += ' reveal-correct';
                               else if (isWrongSelected) optionClass += ' reveal-incorrect';

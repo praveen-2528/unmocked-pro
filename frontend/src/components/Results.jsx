@@ -9,6 +9,17 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
   const mc = testData.blueprint.marks_correct || 1.0;
   const mi = testData.blueprint.marks_incorrect || 0.25;
 
+  const sectionStats = testData?.sections ? testData.sections.map(sec => {
+    let correct = 0, incorrect = 0, unattempted = 0;
+    sec.questions.forEach(q => {
+      const ans = answers ? answers[q.id] : null;
+      if (!ans || ans === '0') unattempted++;
+      else if (ans === q.answer) correct++;
+      else incorrect++;
+    });
+    return { name: sec.name, total: sec.questions.length, correct, incorrect, unattempted };
+  }) : [];
+
   useEffect(() => {
     if (currentUser?.id && scoreData && testSessionId) {
       const accuracy = (scoreData.correct + scoreData.incorrect) > 0 
@@ -58,11 +69,30 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
         </div>
       </div>
 
-      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '24px', borderRadius: '12px', textAlign: 'left', marginBottom: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}><span style={{ color: 'var(--text-secondary)' }}>Total Questions:</span> <strong>{scoreData.total}</strong></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}><span style={{ color: 'var(--accent-color)' }}>Correct (+{mc}):</span> <strong>{scoreData.correct}</strong></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}><span style={{ color: 'var(--danger-color)' }}>Incorrect (-{mi}):</span> <strong>{scoreData.incorrect}</strong></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'gray' }}>Unattempted:</span> <strong>{scoreData.unattempted}</strong></div>
+      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '24px', borderRadius: '12px', textAlign: 'left', marginBottom: '32px', overflowX: 'auto' }}>
+        <h3 style={{ color: '#fff', marginBottom: '16px', fontSize: '1.2rem', textAlign: 'center' }}>Sectional Analysis</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
+              <th style={{ padding: '12px', textAlign: 'left' }}>Section</th>
+              <th style={{ padding: '12px' }}>Total</th>
+              <th style={{ padding: '12px', color: 'var(--accent-color)' }}>Right</th>
+              <th style={{ padding: '12px', color: 'var(--danger-color)' }}>Wrong</th>
+              <th style={{ padding: '12px', color: 'gray' }}>Skipped</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sectionStats.map((sec, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>{sec.name}</td>
+                <td style={{ padding: '12px' }}>{sec.total}</td>
+                <td style={{ padding: '12px', color: 'var(--accent-color)' }}>{sec.correct}</td>
+                <td style={{ padding: '12px', color: 'var(--danger-color)' }}>{sec.incorrect}</td>
+                <td style={{ padding: '12px', color: 'gray' }}>{sec.unattempted}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
@@ -175,6 +205,33 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
                   <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                     <span style={{ color: 'var(--accent-color)' }}>{p.right}</span> / <span style={{ color: 'var(--danger-color)' }}>{p.wrong}</span> / <span>{p.skipped}</span>
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Sectional Stats Table */}
+        <div className="glass-panel" style={{ padding: '0', overflowX: 'auto', marginTop: '32px' }}>
+          <h3 style={{ color: '#fff', margin: '16px 0', fontSize: '1.2rem', textAlign: 'center' }}>Your Sectional Analysis</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
+                <th style={{ padding: '12px', textAlign: 'left' }}>Section</th>
+                <th style={{ padding: '12px' }}>Total</th>
+                <th style={{ padding: '12px', color: 'var(--accent-color)' }}>Right</th>
+                <th style={{ padding: '12px', color: 'var(--danger-color)' }}>Wrong</th>
+                <th style={{ padding: '12px', color: 'gray' }}>Skipped</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sectionStats.map((sec, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                  <td style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>{sec.name}</td>
+                  <td style={{ padding: '12px' }}>{sec.total}</td>
+                  <td style={{ padding: '12px', color: 'var(--accent-color)' }}>{sec.correct}</td>
+                  <td style={{ padding: '12px', color: 'var(--danger-color)' }}>{sec.incorrect}</td>
+                  <td style={{ padding: '12px', color: 'gray' }}>{sec.unattempted}</td>
                 </tr>
               ))}
             </tbody>

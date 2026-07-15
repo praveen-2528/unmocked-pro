@@ -1,9 +1,11 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Trophy, User, Settings } from 'lucide-react';
+import useAuthStore from '../store/useAuthStore';
+
 
 export default function Navbar() {
-  const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+  const currentUser = useAuthStore(state => state.user);
   const navigate = useNavigate();
 
   const handleAvatarClick = () => {

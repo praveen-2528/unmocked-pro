@@ -13,7 +13,6 @@ import SolutionsView from './SolutionsView';
 import './UserProfileModal.css';
 
 const UserProfileModal = ({ queryEmail, queryName, onClose }) => {
-    const { authFetch } = useAuth();
     const [profile, setProfile] = useState(null);
     const [history, setHistory] = useState([]);
     const [loadingProfile, setLoadingProfile] = useState(true);
@@ -58,7 +57,7 @@ const UserProfileModal = ({ queryEmail, queryName, onClose }) => {
             setLoadingProfile(true);
             setError('');
         });
-        authFetch(url)
+        fetch(url)
             .then(r => {
                 if (!r.ok) {
                     if (r.status === 404) throw new Error('User has not completed any exams yet or profile not found.');
@@ -75,7 +74,7 @@ const UserProfileModal = ({ queryEmail, queryName, onClose }) => {
                 setError(err.message);
                 setLoadingProfile(false);
             });
-    }, [queryEmail, queryName, authFetch]);
+    }, [queryEmail, queryName]);
 
     // Fetch details of a specific exam
     const handleSelectExam = (examId) => {
@@ -83,7 +82,7 @@ const UserProfileModal = ({ queryEmail, queryName, onClose }) => {
         setSelectedExamDetail(null);
         setReattempts({});
 
-        authFetch(`/api/history/${examId}`)
+        fetch(`/api/history/${examId}`)
             .then(r => {
                 if (!r.ok) throw new Error('Failed to load exam details');
                 return r.json();

@@ -81,7 +81,9 @@ export default function Dashboard() {
     socket.on('gameStarted', (room) => {
       localStorage.setItem('active_test_data', JSON.stringify(room.testData));
       localStorage.setItem('multiplayer_room', JSON.stringify(room));
-      navigate('/test');
+      const sessionId = 'multi-' + room.code;
+      localStorage.setItem('current_test_session_id', sessionId);
+      navigate('/test/' + sessionId + '?view=instructions');
     });
     
     socket.on('roomClosed', () => {
@@ -469,9 +471,10 @@ export default function Dashboard() {
     if (playMode === 'Solo') {
       localStorage.setItem('active_test_data', JSON.stringify(finalTest));
       localStorage.setItem('test_game_mode', finalMode);
-      localStorage.setItem('current_test_session_id', 'solo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5));
+      const sessionId = 'solo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+      localStorage.setItem('current_test_session_id', sessionId);
       localStorage.removeItem('multiplayer_room');
-      navigate('/test');
+      navigate('/test/' + sessionId + '?view=instructions');
     } else {
       socket.emit('createRoom', { user: currentUser, testData: finalTest, mode: finalMode });
       socket.once('roomCreated', (room) => {

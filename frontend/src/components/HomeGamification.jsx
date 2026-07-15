@@ -9,13 +9,15 @@ import {
     ChevronLeft, Trash2, TrendingUp, Target, Clock, Award, 
     BarChart3, Flame, Lock, Users, Play, Sparkles 
 } from 'lucide-react';
-import '../pages/Dashboard.css';
+import styles from '../pages/Dashboard.module.css';
 import UserProfileModal from './UserProfileModal';
+import useAuthStore from '../store/useAuthStore';
+
 
 const HomeGamification = ({ children }) => {
     const navigate = useNavigate();
     
-    const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
+    const currentUser = useAuthStore(state => state.user);
     const authFetch = (url, options = {}) => {
         return fetch(url, {
             ...options,

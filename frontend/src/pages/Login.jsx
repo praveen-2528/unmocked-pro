@@ -1,22 +1,21 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/useAuthStore';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { user: authUser, setUser, logout } = useAuthStore();
 
   useEffect(() => {
     try {
-      const userStr = localStorage.getItem('unmocked_user');
-      if (!userStr || userStr === 'undefined') return;
-      const user = JSON.parse(userStr);
-      if (user && user.email && !user.requiresPasswordReset) {
-        navigate(user.is_admin ? '/admin' : '/home');
+      if (authUser && authUser.email && !authUser.requiresPasswordReset) {
+        navigate(authUser.is_admin ? '/admin' : '/home');
       }
     } catch (e) {
-      localStorage.removeItem('unmocked_user');
+      logout();
     }
-  }, [navigate]);
+  }, [authUser, navigate, logout]);
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -40,8 +39,8 @@ export default function Login() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Save user to local storage and redirect
-      localStorage.setItem('unmocked_user', JSON.stringify(data.user));
+      // Save user and redirect
+      setUser(data.user);
       if (data.requiresPasswordReset) {
         navigate('/reset-password', { state: { token: data.token } });
       } else if (data.user.is_admin) {
