@@ -507,6 +507,20 @@ export default function TestEngine() {
     socket.emit('submitStats', { code: room.code, userId: currentUser.id, statsUpdate: { attempted, skipped, right, wrong, accuracy } });
   };
 
+  const previousQuestion = () => {
+    if (currentQuestionIdx > 0) {
+      setCurrentQuestionIdx(prev => prev - 1);
+    } else if (currentSectionIdx > 0 && !testData.blueprint.has_sectional_timing) {
+      // Global timing - can seamlessly jump to previous section
+      setCurrentSectionIdx(prev => prev - 1);
+      setCurrentQuestionIdx(testData.sections[currentSectionIdx - 1].questions.length - 1);
+    } else {
+      alert("You are at the first question.");
+    }
+    setQuestionStartTime(Date.now());
+    setFriendlyTimer(0);
+  };
+
   const advanceQuestion = () => {
     const currentSection = testData.sections[currentSectionIdx];
     if (currentQuestionIdx < currentSection.questions.length - 1) {
@@ -862,8 +876,10 @@ export default function TestEngine() {
               <div className="te-buttons">
                   {reviewMode ? (
                       <>
+                          <button className="te-btn submit" style={{ background: '#34495e' }} onClick={previousQuestion}>Previous Question</button>
                           <button className="te-btn submit" onClick={advanceQuestion}>Next Question</button>
                           <button className="te-btn save" onClick={() => { setIsSubmitted(true); setReviewMode(false); }}>Back to Results</button>
+                          <button className="te-btn" style={{ background: '#8b5cf6', color: 'white' }} onClick={() => navigate('/home')}>Back to Analytics</button>
                       </>
                   ) : !isFriendly ? (
                       <>
