@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Calendar, Users, Hash, Play, Eye, Clock, BarChart2, Target, ArrowLeft, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import RoomReview from './RoomReview';
 
 const EXAM_COLORS = {
@@ -43,9 +43,18 @@ function getModeLabel(mode) {
 export default function GlobalRoomReviews({ currentUser, onBack }) {
   const [historyRooms, setHistoryRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewingRoomId, setViewingRoomId] = useState(null);
-  const [reattemptingRoom, setReattemptingRoom] = useState(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewingRoomId, setViewingRoomId] = useState(searchParams.get('roomId') || null);
+  const [reattemptingRoom, setReattemptingRoom] = useState(null);
+
+  const handleBackToRooms = () => {
+    setViewingRoomId(null);
+    if (searchParams.has('roomId')) {
+      searchParams.delete('roomId');
+      setSearchParams(searchParams);
+    }
+  };
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,7 +131,7 @@ export default function GlobalRoomReviews({ currentUser, onBack }) {
     });
 
   if (viewingRoomId) {
-    return <RoomReview sessionId={viewingRoomId} onBack={() => setViewingRoomId(null)} />;
+    return <RoomReview currentUser={currentUser} sessionId={viewingRoomId} onBack={handleBackToRooms} />;
   }
 
   return (
