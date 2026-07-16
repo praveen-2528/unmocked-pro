@@ -879,7 +879,7 @@ export default function TestEngine() {
                           <button className="te-btn submit" style={{ background: '#34495e' }} onClick={previousQuestion}>Previous Question</button>
                           <button className="te-btn submit" onClick={advanceQuestion}>Next Question</button>
                           <button className="te-btn save" onClick={() => { setIsSubmitted(true); setReviewMode(false); }}>Back to Results</button>
-                          <button className="te-btn" style={{ background: '#8b5cf6', color: 'white' }} onClick={() => navigate('/home')}>Back to Analytics</button>
+                          <button className="te-btn" style={{ background: '#8b5cf6', color: 'white' }} onClick={() => navigate('/home?step=7')}>Back to Analytics</button>
                       </>
                   ) : !isFriendly ? (
                       <>
