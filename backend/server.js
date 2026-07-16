@@ -431,6 +431,51 @@ app.get('/api/test-session/:sessionId', (req, res) => {
   });
 });
 
+// --- Save & Exit Endpoints ---
+app.post('/api/test-session/save-exit', (req, res) => {
+  const { session_id, user_id, exam_name, game_mode, test_data, answers, status_map, time_left, current_section, current_question, time_spent_map } = req.body;
+  if (!session_id || !user_id || !test_data) return res.status(400).json({ error: 'Missing required fields' });
+
+  // Delete any existing save for this session+user to avoid duplicates
+  db.run('DELETE FROM saved_test_sessions WHERE session_id = ? AND user_id = ?', [session_id, user_id], (delErr) => {
+    db.run(
+      `INSERT INTO saved_test_sessions (session_id, user_id, exam_name, game_mode, test_data, answers, status_map, time_left, current_section, current_question, time_spent_map)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [session_id, user_id, exam_name || 'Saved Test', game_mode || 'Solo-Real',
+       JSON.stringify(test_data), JSON.stringify(answers || {}), JSON.stringify(status_map || {}),
+       time_left || 0, current_section || 0, current_question || 0, JSON.stringify(time_spent_map || {})],
+      function(err) {
+        if (err) { console.error(err); return res.status(500).json({ error: 'Database error' }); }
+        // Cleanup the active session
+        db.run('DELETE FROM active_test_sessions WHERE session_id = ? AND user_id = ?', [session_id, user_id]);
+        res.status(201).json({ message: 'Test saved successfully', id: this.lastID });
+      }
+    );
+  });
+});
+
+app.get('/api/test-session/saved/:userId', (req, res) => {
+  db.all('SELECT id, session_id, exam_name, game_mode, time_left, current_section, current_question, saved_at FROM saved_test_sessions WHERE user_id = ? ORDER BY saved_at DESC', [req.params.userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows || []);
+  });
+});
+
+app.get('/api/test-session/saved-detail/:id', (req, res) => {
+  db.get('SELECT * FROM saved_test_sessions WHERE id = ?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!row) return res.status(404).json({ error: 'Saved session not found' });
+    res.json(row);
+  });
+});
+
+app.delete('/api/test-session/saved/:id', (req, res) => {
+  db.run('DELETE FROM saved_test_sessions WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ message: 'Saved test deleted', deleted: this.changes });
+  });
+});
+
 app.post('/api/test-results', (req, res) => {
   const { user_id, test_session_id, exam_id, exam_name, game_mode, score, total_questions, correct, incorrect, unattempted, accuracy, answers, status_map, test_data, time_spent } = req.body;
   if (!user_id || !exam_name || !game_mode || !test_session_id) return res.status(400).json({ error: 'Missing required fields' });

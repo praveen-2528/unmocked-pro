@@ -126,6 +126,37 @@ export default function TestEngine() {
       return;
     }
 
+    // Check if resuming a saved test
+    const resumeId = new URLSearchParams(window.location.search).get('resumeId');
+    if (resumeId) {
+      fetch(`/api/test-session/saved-detail/${resumeId}`)
+        .then(r => r.json())
+        .then(saved => {
+          if (saved.error) { alert('Saved test not found.'); navigate('/home'); return; }
+          const td = JSON.parse(saved.test_data);
+          setTestData(td);
+          setGameMode(saved.game_mode || 'Solo-Real');
+          setTestSessionId(saved.session_id);
+          setAnswers(JSON.parse(saved.answers || '{}'));
+          setStatusMap(JSON.parse(saved.status_map || '{}'));
+          setTimeSpentMap(JSON.parse(saved.time_spent_map || '{}'));
+          setCurrentSectionIdx(saved.current_section || 0);
+          setCurrentQuestionIdx(saved.current_question || 0);
+          if (saved.time_left > 0) setTimeLeft(saved.time_left);
+          else if (td.blueprint?.has_sectional_timing) setTimeLeft((td.sections[saved.current_section || 0]?.duration || 15) * 60);
+          else setTimeLeft((td.blueprint?.total_duration || 60) * 60);
+          localStorage.setItem('active_test_data', JSON.stringify(td));
+          localStorage.setItem('test_game_mode', saved.game_mode || 'Solo-Real');
+          localStorage.setItem('current_test_session_id', saved.session_id);
+          localStorage.removeItem('multiplayer_room');
+          // Delete the saved session since it's being resumed
+          fetch(`/api/test-session/saved/${resumeId}`, { method: 'DELETE' }).catch(() => {});
+          setSearchParams({ view: 'play' });
+        })
+        .catch(() => { navigate('/home'); });
+      return;
+    }
+
     const data = JSON.parse(localStorage.getItem('active_test_data'));
     const mpRoom = JSON.parse(localStorage.getItem('multiplayer_room'));
     const mode = mpRoom ? mpRoom.mode : (localStorage.getItem('test_game_mode') || 'Solo-Real');
@@ -496,6 +527,42 @@ export default function TestEngine() {
     }
     setQuestionStartTime(Date.now());
     setFriendlyTimer(0);
+  };
+
+  const handleSaveAndExit = () => {
+    if (!testData || !currentUser.id) return;
+    const examName = testData.blueprint?.exam_name || 'Saved Test';
+    if (!window.confirm(`Save your progress for "${examName}" and exit? You can resume later from the Dashboard.`)) return;
+    
+    fetch('/api/test-session/save-exit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: testSessionId,
+        user_id: currentUser.id,
+        exam_name: examName,
+        game_mode: gameMode,
+        test_data: testData,
+        answers,
+        status_map: statusMap,
+        time_left: timeLeft,
+        current_section: currentSectionIdx,
+        current_question: currentQuestionIdx,
+        time_spent_map: timeSpentMap
+      })
+    })
+    .then(r => r.json())
+    .then(() => {
+      localStorage.removeItem('active_test_data');
+      localStorage.removeItem('test_game_mode');
+      localStorage.removeItem('current_test_session_id');
+      localStorage.removeItem('test_progress_' + testSessionId);
+      navigate('/home');
+    })
+    .catch(err => {
+      console.error('Save failed:', err);
+      alert('Failed to save. Please try again.');
+    });
   };
 
   const handleSaveNext = () => {
@@ -884,7 +951,7 @@ export default function TestEngine() {
                                   Submit Section
                                 </button>
                               )}
-                              <button className="te-btn save" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: '#34495e', color: 'white' }}>Save & Exit</button>
+                              <button className="te-btn save" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: '#34495e', color: 'white' }} onClick={handleSaveAndExit}>Save & Exit</button>
                           </div>
                       )}
                   </div>

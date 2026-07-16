@@ -169,6 +169,25 @@ const db = new sqlite3.Database(dbPath, (err) => {
       )
     `);
 
+    db.run(`
+      CREATE TABLE IF NOT EXISTS saved_test_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        exam_name TEXT NOT NULL,
+        game_mode TEXT NOT NULL DEFAULT 'Solo-Real',
+        test_data TEXT NOT NULL,
+        answers TEXT NOT NULL DEFAULT '{}',
+        status_map TEXT NOT NULL DEFAULT '{}',
+        time_left INTEGER NOT NULL DEFAULT 0,
+        current_section INTEGER NOT NULL DEFAULT 0,
+        current_question INTEGER NOT NULL DEFAULT 0,
+        time_spent_map TEXT NOT NULL DEFAULT '{}',
+        saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
     // Study Rooms Migrations
     db.run(`
       CREATE TABLE IF NOT EXISTS study_groups (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check } from "lucide-react";
+import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check, Pause, Trash2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [blueprints, setBlueprints] = useState([]);
   const [pastTests, setPastTests] = useState([]);
+  const [savedTests, setSavedTests] = useState([]);
   const [studyRooms, setStudyRooms] = useState([]);
   
   // Wizard State
@@ -62,6 +63,11 @@ export default function Dashboard() {
         fetch(`/api/study-groups/user/${currentUser.id}`)
           .then(res => res.json())
           .then(data => setStudyRooms(data))
+          .catch(err => console.error(err));
+
+        fetch(`/api/test-session/saved/${currentUser.id}`)
+          .then(res => res.json())
+          .then(data => setSavedTests(Array.isArray(data) ? data : []))
           .catch(err => console.error(err));
           
         if (step === 0) {
@@ -123,6 +129,18 @@ export default function Dashboard() {
       const res = await fetch('/api/blueprints');
       if (res.ok) setBlueprints(await res.json());
     } catch (err) { console.error(err); }
+  };
+
+  const getTimeAgo = (date) => {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'just now';
+    const mins = Math.floor(seconds / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    return date.toLocaleDateString();
   };
 
   const getExpectedCount = () => {
@@ -695,6 +713,59 @@ export default function Dashboard() {
                 {error && step === 0 && <p style={{ color: 'var(--danger-color)', fontSize: '0.9rem' }}>{error}</p>}
               </div>
             </div>
+
+            {/* Saved Tests (Resume) Section */}
+            {savedTests.length > 0 && (
+              <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2 className="geist-pixel" style={{ fontSize: '1.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Pause size={22} style={{ color: '#f59e0b' }} /> Saved Tests
+                  </h2>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{savedTests.length} paused {savedTests.length === 1 ? 'test' : 'tests'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                  {savedTests.map(st => {
+                    const mins = Math.floor((st.time_left || 0) / 60);
+                    const secs = (st.time_left || 0) % 60;
+                    const savedDate = st.saved_at ? new Date(st.saved_at.replace(' ', 'T') + 'Z') : null;
+                    const timeAgo = savedDate ? getTimeAgo(savedDate) : '';
+                    return (
+                      <div key={st.id} className="glass-card" style={{ padding: '20px', borderLeft: '3px solid #f59e0b', position: 'relative' }}>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Delete this saved test? This cannot be undone.')) {
+                              fetch(`/api/test-session/saved/${st.id}`, { method: 'DELETE' })
+                                .then(() => setSavedTests(prev => prev.filter(s => s.id !== st.id)))
+                                .catch(() => {});
+                            }
+                          }}
+                          style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }}
+                          title="Delete saved test"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)', paddingRight: '24px' }}>{st.exam_name}</h3>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={13} /> {mins}m {secs}s left</span>
+                          <span>Q{st.current_question + 1} • Sec {st.current_section + 1}</span>
+                          <span>{st.game_mode?.replace('-', ' ')}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{timeAgo}</span>
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: '8px 20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                            onClick={() => navigate(`/test/${st.session_id}?resumeId=${st.id}`)}
+                          >
+                            <Play size={14} /> Resume
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Study Rooms Section */}
             <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px' }}>
