@@ -26,6 +26,7 @@ export default function TestEngine() {
   const [instructionsAccepted, setInstructionsAccepted] = useState(false);
   const [scoreData, setScoreData] = useState(null);
   const [testSessionId, setTestSessionId] = useState('');
+  const [pastRoomResults, setPastRoomResults] = useState(null);
   
   const [timeSpentMap, setTimeSpentMap] = useState({});
   const [reviewUserName, setReviewUserName] = useState('');
@@ -117,6 +118,18 @@ export default function TestEngine() {
           if (data.user_name) setReviewUserName(data.user_name);
           setIsSubmitted(false);
           setReviewMode(true);
+          
+          if (data.game_mode === 'Multiplayer-Friendly' && data.test_session_id) {
+             fetch(`/api/public/history-rooms/${data.test_session_id}`)
+               .then(r => r.json())
+               .then(roomData => {
+                  setPastRoomResults(roomData);
+                  const revealed = {};
+                  parsedData.sections.forEach(s => s.questions.forEach(q => revealed[q.id] = true));
+                  setFriendlyRevealed(revealed);
+               })
+               .catch(e => console.error(e));
+          }
           setSearchParams({ view: 'review' });
         })
         .catch(err => {
@@ -247,6 +260,34 @@ export default function TestEngine() {
       })
       .catch(err => { /* Ignore if no session exists yet */ });
   }, [testSessionId]);
+
+  useEffect(() => {
+    if (reviewMode && gameMode === 'Multiplayer-Friendly' && pastRoomResults && testData && testData.sections) {
+      const currentQuestion = testData.sections[currentSectionIdx]?.questions[currentQuestionIdx];
+      if (currentQuestion) {
+        const newRoomStatusData = pastRoomResults.map(pr => {
+          let submitted = null;
+          try {
+            const ans = pr.answers ? (typeof pr.answers === 'string' ? JSON.parse(pr.answers) : pr.answers) : {};
+            const ts = pr.time_spent ? (typeof pr.time_spent === 'string' ? JSON.parse(pr.time_spent) : pr.time_spent) : {};
+            const qId = currentQuestion.id;
+            
+            if (ans[qId] !== undefined) {
+              submitted = { answer: ans[qId], timeTaken: ts[qId] || 0 };
+            }
+          } catch(e) {}
+          
+          return {
+            id: pr.user_id,
+            name: pr.user_name || pr.user_email || 'Unknown Player',
+            isHost: false,
+            submitted: submitted
+          };
+        });
+        setRoomStatusData(newRoomStatusData);
+      }
+    }
+  }, [currentQuestionIdx, currentSectionIdx, pastRoomResults, reviewMode, gameMode, testData]);
 
   useEffect(() => {
     if (!testSessionId || !currentUser.id || isSubmitted) return;
