@@ -1186,6 +1186,12 @@ io.on('connection', (socket) => {
     
     socket.join(code);
     
+    // If the room was marked for deletion due to inactivity, cancel it
+    if (rooms[code].disconnectTimeout) {
+      clearTimeout(rooms[code].disconnectTimeout);
+      rooms[code].disconnectTimeout = null;
+    }
+    
     if (rooms[code].state === 'LOBBY') {
       io.to(code).emit('roomUpdated', rooms[code]);
     } else {
@@ -1442,12 +1448,26 @@ io.on('connection', (socket) => {
         stateChanged = true;
       }
 
-      if (stateChanged && room.state === 'PLAYING' && room.mode === 'Multiplayer-Friendly') {
-        const totalPlayers = (room.host.connected ? 1 : 0) + room.guests.filter(g => g.connected).length;
-        io.to(code).emit('friendlySubmissionCount', Object.keys(room.answersSubmitted).length, totalPlayers);
-        
-        if (totalPlayers > 0 && Object.keys(room.answersSubmitted).length >= totalPlayers) {
-          io.to(code).emit('friendlyReveal', room.answersSubmitted);
+      if (stateChanged) {
+        // If everyone is disconnected, start a 30-minute timer to discard the room
+        const anyConnected = room.host.connected || room.guests.some(g => g.connected);
+        if (!anyConnected && room.state !== 'FINISHED') {
+          if (room.disconnectTimeout) clearTimeout(room.disconnectTimeout);
+          room.disconnectTimeout = setTimeout(() => {
+            if (rooms[code]) {
+              io.to(code).emit('roomClosed');
+              delete rooms[code];
+            }
+          }, 30 * 60 * 1000); // 30 minutes
+        }
+
+        if (room.state === 'PLAYING' && room.mode === 'Multiplayer-Friendly') {
+          const totalPlayers = (room.host.connected ? 1 : 0) + room.guests.filter(g => g.connected).length;
+          io.to(code).emit('friendlySubmissionCount', Object.keys(room.answersSubmitted).length, totalPlayers);
+          
+          if (totalPlayers > 0 && Object.keys(room.answersSubmitted).length >= totalPlayers) {
+            io.to(code).emit('friendlyReveal', room.answersSubmitted);
+          }
         }
       }
     }
