@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Users, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>') : '';
 export default function RoomReview({ sessionId, onBack }) {
   const [roomData, setRoomData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -185,7 +186,7 @@ export default function RoomReview({ sessionId, onBack }) {
               </div>
             </div>
             
-            <div style={{ fontSize: '1.2rem', marginBottom: '24px', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: allQuestions[currentQuestionIdx].question }} />
+            <div style={{ fontSize: '1.2rem', marginBottom: '24px', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatHtml(allQuestions[currentQuestionIdx].question) }} />
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {['A', 'B', 'C', 'D', 'E'].map(opt => {
@@ -201,7 +202,7 @@ export default function RoomReview({ sessionId, onBack }) {
                     background: isCorrect ? 'rgba(74, 222, 128, 0.1)' : 'var(--surface-color)'
                   }}>
                     <strong style={{ marginRight: '12px', color: isCorrect ? '#4ade80' : 'var(--text-secondary)' }}>{opt}.</strong>
-                    <span dangerouslySetInnerHTML={{ __html: optText }} />
+                    <span dangerouslySetInnerHTML={{ __html: formatHtml(optText) }} />
                     {isCorrect && <span style={{ marginLeft: '12px', color: '#4ade80', fontSize: '0.9rem', fontWeight: 'bold' }}>✓ Correct Answer</span>}
                   </div>
                 );

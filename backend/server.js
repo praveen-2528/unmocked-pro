@@ -511,6 +511,17 @@ app.post('/api/test-results', (req, res) => {
   });
 });
 
+app.get('/api/test-results/session/:sessionId', (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+  
+  db.get('SELECT * FROM test_results WHERE test_session_id = ? AND user_id = ?', [req.params.sessionId, userId], (err, row) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!row) return res.status(404).json({ error: 'Test not found' });
+    res.json(row);
+  });
+});
+
 app.get('/api/test-results/detail/:id', (req, res) => {
   const query = `
     SELECT tr.*, u.name as user_name

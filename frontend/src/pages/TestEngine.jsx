@@ -6,6 +6,8 @@ import Results from '../components/Results';
 import DIChartRenderer from '../components/DIChartRenderer';
 import '../TestEngine.css';
 
+const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>') : '';
+
 export default function TestEngine() {
   const navigate = useNavigate();
   const { resultId, sessionId } = useParams();
@@ -246,19 +248,47 @@ export default function TestEngine() {
     // Save to local storage for solo mode persistence
     localStorage.setItem('current_test_session_id', testSessionId);
 
-    // Fetch active session from server
-    fetch(`/api/test-session/${testSessionId}?userId=${currentUser.id}`)
+    // Check if the user already submitted this test session
+    fetch(`/api/test-results/session/${testSessionId}?userId=${currentUser.id}`)
       .then(res => {
-        if (!res.ok) throw new Error('No session');
+        if (!res.ok) throw new Error('Not submitted');
         return res.json();
       })
       .then(data => {
-        if (data.answers && data.status_map) {
-          setAnswers(data.answers);
-          setStatusMap(data.status_map);
-        }
+         // User already finished! Load their result data and show results view
+         setAnswers(JSON.parse(data.answers || '{}'));
+         setStatusMap(JSON.parse(data.status_map || '{}'));
+         if (data.time_spent) setTimeSpentMap(JSON.parse(data.time_spent));
+         
+         const parsedData = JSON.parse(data.test_data || '{}');
+         setScoreData({
+            correct: data.correct,
+            incorrect: data.incorrect,
+            unattempted: data.unattempted,
+            total: data.total_questions,
+            marks: data.score,
+            mc: parsedData.blueprint?.marks_correct || 1,
+            mi: parsedData.blueprint?.marks_incorrect || 0.25
+         });
+         
+         setIsSubmitted(true);
+         setSearchParams({ view: 'results' });
       })
-      .catch(err => { /* Ignore if no session exists yet */ });
+      .catch(() => {
+        // Not submitted yet, load active session progress
+        fetch(`/api/test-session/${testSessionId}?userId=${currentUser.id}`)
+          .then(res => {
+            if (!res.ok) throw new Error('No session');
+            return res.json();
+          })
+          .then(data => {
+            if (data.answers && data.status_map) {
+              setAnswers(data.answers);
+              setStatusMap(data.status_map);
+            }
+          })
+          .catch(err => { /* Ignore if no session exists yet */ });
+      });
   }, [testSessionId]);
 
   useEffect(() => {
@@ -1025,7 +1055,7 @@ export default function TestEngine() {
                           <div 
                               className="math-inline-force" 
                               style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-dark)', whiteSpace: 'pre-wrap' }}
-                              dangerouslySetInnerHTML={{ __html: currentQuestion.passage }} 
+                              dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.passage) }} 
                           />
                       </div>
                   )}
@@ -1041,7 +1071,7 @@ export default function TestEngine() {
                       <div 
                           className="math-inline-force" 
                           style={{ marginBottom: '1rem', fontSize: '1.1rem', whiteSpace: 'pre-wrap' }}
-                          dangerouslySetInnerHTML={{ __html: currentQuestion.text }} 
+                          dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.text) }} 
                       />
 
                       <div className="te-options-list">
@@ -1068,7 +1098,7 @@ export default function TestEngine() {
                                   }}
                               >
                                   <input type="radio" className="te-option-radio" checked={isSelected} readOnly />
-                                  <div className="math-inline-force" dangerouslySetInnerHTML={{ __html: opt }} />
+                                  <div className="math-inline-force" dangerouslySetInnerHTML={{ __html: formatHtml(opt) }} />
                                   {isCorrect && <CheckCircle2 size={20} color="#1abc9c" style={{ marginLeft: 'auto' }} />}
                                   {isWrongSelected && <XCircle size={20} color="#e74c3c" style={{ marginLeft: 'auto' }} />}
                               </label>
@@ -1087,7 +1117,7 @@ export default function TestEngine() {
                        <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                          <CheckCircle2 size={18} /> Explanation
                        </h4>
-                       <div className="math-inline-force" style={{ lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: currentQuestion.explanation || "No explanation provided." }} />
+                       <div className="math-inline-force" style={{ lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.explanation || "No explanation provided.") }} />
                      </div>
                   )}
               </div>
