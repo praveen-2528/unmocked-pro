@@ -645,6 +645,14 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to share to group'); }
   };
 
+  if (step > 1 && step < 5 && !selectedBp) {
+    return (
+      <div className="dashboard-container flex-center">
+        <p style={{ color: 'var(--text-secondary)' }}>Restoring session...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       <Navbar />
