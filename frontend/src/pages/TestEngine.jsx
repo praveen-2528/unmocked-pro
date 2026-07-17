@@ -342,6 +342,11 @@ export default function TestEngine() {
   useEffect(() => {
     if (!isMultiplayer || !room) return;
     
+    const handleConnect = () => {
+      socket.emit('joinRoom', { code: room.code, user: currentUser });
+    };
+    socket.on('connect', handleConnect);
+
     socket.on('statsUpdated', (stats) => setLiveStats(stats));
     socket.on('chatMessage', (msg) => {
       setChatMessages(prev => [...prev, msg]);
@@ -401,6 +406,7 @@ export default function TestEngine() {
     }
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('statsUpdated');
       socket.off('chatMessage');
       socket.off('testFinished');

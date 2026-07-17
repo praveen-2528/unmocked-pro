@@ -457,6 +457,141 @@ function drawPieChart(ctx, data, w, h, animProgress) {
   }
 }
 
+// ── Radar Chart (Web DI) ───────────────────────────────────────────────
+function drawRadarChart(ctx, chartData, w, h, progress) {
+  const cats = chartData.categories || [];
+  const series = chartData.series || [];
+  if (cats.length === 0 || series.length === 0) return;
+
+  const numAxes = cats.length;
+  const padding = 70;
+  const cx = w / 2;
+  const cy = (h - 20) / 2 + 10;
+  const radius = Math.min(cx, cy) - padding + 20;
+
+  let maxVal = 0;
+  series.forEach(s => {
+    (s.values || []).forEach(v => {
+      if (typeof v === 'number' && v > maxVal) maxVal = v;
+    });
+  });
+  if (maxVal === 0) maxVal = 10;
+  const scale = getNiceScale(0, maxVal, 5);
+  maxVal = scale.max;
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = GRID_COLOR;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  const numRings = 4;
+  for (let ring = 1; ring <= numRings; ring++) {
+    const r = (radius / numRings) * ring;
+    ctx.beginPath();
+    for (let i = 0; i < numAxes; i++) {
+      const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    
+    ctx.fillStyle = TEXT_MUTED;
+    ctx.font = '9px Inter, system-ui, sans-serif';
+    const val = (maxVal / numRings) * ring;
+    ctx.fillText(formatNum(val), cx, cy - r - 6);
+  }
+
+  for (let i = 0; i < numAxes; i++) {
+    const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
+    const x = cx + radius * Math.cos(angle);
+    const y = cy + radius * Math.sin(angle);
+    
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = AXIS_COLOR;
+    ctx.stroke();
+
+    const labelR = radius + 15;
+    const lx = cx + labelR * Math.cos(angle);
+    const ly = cy + labelR * Math.sin(angle);
+    ctx.fillStyle = TEXT_COLOR;
+    ctx.font = '11px Inter, system-ui, sans-serif';
+    
+    if (Math.cos(angle) > 0.1) ctx.textAlign = 'left';
+    else if (Math.cos(angle) < -0.1) ctx.textAlign = 'right';
+    else ctx.textAlign = 'center';
+    
+    ctx.fillText(cats[i], lx, ly);
+  }
+
+  series.forEach((s, si) => {
+    const color = CHART_COLORS[si % CHART_COLORS.length];
+    
+    ctx.beginPath();
+    let started = false;
+    
+    for (let i = 0; i < numAxes; i++) {
+      const val = (s.values || [])[i];
+      if (typeof val !== 'number') continue;
+      
+      const r = (val / maxVal) * radius * progress;
+      const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      
+      if (!started) {
+        ctx.moveTo(x, y);
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    
+    if (started) {
+      ctx.closePath();
+      
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.restore();
+      
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+      
+      for (let i = 0; i < numAxes; i++) {
+        const val = (s.values || [])[i];
+        if (typeof val !== 'number') continue;
+        
+        const r = (val / maxVal) * radius * progress;
+        const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  });
+
+  if (chartData.title) {
+    ctx.fillStyle = TITLE_COLOR;
+    ctx.font = 'bold 14px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(chartData.title, w / 2, 20);
+  }
+  drawLegend(ctx, series, w, h - 16);
+}
+
 // ── Legend Drawing (shared) ──────────────────────────────────────────
 function drawLegend(ctx, series, canvasWidth, y) {
   if (series.length <= 1) return;
@@ -557,6 +692,9 @@ const DIChartRenderer = ({ chartData }) => {
       case 'donut':
         drawPieChart(ctx, chartData, w, h, progress);
         break;
+      case 'radar':
+        drawRadarChart(ctx, chartData, w, h, progress);
+        break;
       default:
         drawBarChart(ctx, chartData, w, h, progress);
     }
@@ -613,6 +751,17 @@ const DIChartRenderer = ({ chartData }) => {
     return (
       <div ref={containerRef} className="di-chart-container">
         <TableRenderer data={chartData} />
+      </div>
+    );
+  }
+
+  if ((chartData.type || '').toLowerCase() === 'mixed' && Array.isArray(chartData.charts)) {
+    return (
+      <div className="di-mixed-container" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {chartData.title && <div className="di-table-title" style={{ color: 'var(--text-primary)', textAlign: 'center', marginBottom: '-1rem' }}>{chartData.title}</div>}
+        {chartData.charts.map((subChart, i) => (
+          <DIChartRenderer key={i} chartData={subChart} />
+        ))}
       </div>
     );
   }
