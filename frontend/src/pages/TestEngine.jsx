@@ -389,7 +389,7 @@ export default function TestEngine() {
       }
     });
     socket.on('testFinished', () => {
-      alert("Host has ended the exam. Submitting now.");
+      // Host ended the exam, auto submit without blocking alert
       submitTest();
     });
     socket.on('multiplayerTestStarted', () => {
@@ -530,7 +530,7 @@ export default function TestEngine() {
   const handleTimeUp = () => {
     if (testData.blueprint.has_sectional_timing) {
       if (currentSectionIdx < testData.sections.length - 1) {
-        alert(`Time is up for ${testData.sections[currentSectionIdx].name}! Auto-advancing to next section.`);
+        // Time is up for section, auto-advance without blocking alert
         setCurrentSectionIdx(prev => {
           const nextIdx = prev + 1;
           setTimeLeft((testData.sections[nextIdx].duration || 15) * 60);
@@ -538,11 +538,11 @@ export default function TestEngine() {
           return nextIdx;
         });
       } else {
-        alert("Time is up! Submitting test.");
+        // Time is up, auto submit without blocking alert
         submitTest();
       }
     } else {
-      alert("Time is up! Submitting test.");
+      // Time is up, auto submit without blocking alert
       submitTest();
     }
   };
