@@ -6,7 +6,7 @@ import Results from '../components/Results';
 import DIChartRenderer from '../components/DIChartRenderer';
 import '../TestEngine.css';
 
-const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>') : '';
+const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') : '';
 
 export default function TestEngine() {
   const navigate = useNavigate();
