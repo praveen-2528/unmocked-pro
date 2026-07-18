@@ -1155,7 +1155,11 @@ export default function Dashboard() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                   {/* Host Card */}
                   <div className="glass-card" style={{ padding: '16px', borderColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-color)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>{lobbyData.host.name.charAt(0).toUpperCase()}</div>
+                    {lobbyData.host.profile_pic ? (
+                      <img src={lobbyData.host.profile_pic} alt="Host Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-color)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>{lobbyData.host.name.charAt(0).toUpperCase()}</div>
+                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {editingNameId === lobbyData.host.id ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1178,7 +1182,11 @@ export default function Dashboard() {
                   {/* Guests Cards */}
                   {lobbyData.guests.map((g, i) => (
                     <div key={i} className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>{g.name.charAt(0).toUpperCase()}</div>
+                      {g.profile_pic ? (
+                        <img src={g.profile_pic} alt="Guest Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>{g.name.charAt(0).toUpperCase()}</div>
+                      )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {editingNameId === g.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
