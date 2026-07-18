@@ -221,6 +221,7 @@ export default function GlobalRoomReviews({ currentUser, onBack }) {
           {filteredRooms.map((r, i) => {
             const color = getExamColor(r.exam_name);
             const participants = r.participant_names?.split(',').map(n => n.trim()).filter(Boolean) || [];
+            const participantPics = r.participant_pics?.split(',').map(p => p.trim()) || [];
             const isReattempting = reattemptingRoom === r.test_session_id;
             return (
               <div
