@@ -777,6 +777,7 @@ app.get('/api/users/profile', (req, res) => {
                               id: userRow.id,
                               name: userRow.name,
                               email: userRow.email,
+                              profile_pic: userRow.profile_pic,
                               xp,
                               level,
                               currentLevelMinXp,
