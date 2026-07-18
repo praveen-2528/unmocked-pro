@@ -695,7 +695,7 @@ export default function TestEngine() {
     setStatusMap(newStatusMap);
     emitStatsUpdate(newAnswers, newStatusMap);
     
-    const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+    const timeTaken = ((Date.now() - questionStartTime) / 1000).toFixed(3);
     
     if (gameMode === 'Solo-Friendly') {
       setFriendlyRevealed(prev => ({ ...prev, [qId]: true }));
@@ -713,7 +713,7 @@ export default function TestEngine() {
       return;
     }
     
-    const timeTaken = Math.round((Date.now() - questionStartTime) / 1000);
+    const timeTaken = ((Date.now() - questionStartTime) / 1000).toFixed(3);
     
     if (gameMode === 'Solo-Friendly') {
       setFriendlyRevealed(prev => ({ ...prev, [qId]: true }));
