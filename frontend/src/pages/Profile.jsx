@@ -62,6 +62,34 @@ const ProfileInner = () => {
     const [historicalLeaderboard, setHistoricalLeaderboard] = useState(null);
     const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('profile_pic', file);
+        formData.append('userId', currentUser.id);
+
+        try {
+            const res = await fetch('/api/profile/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setProfile({ ...profile, profile_pic: data.profile_pic });
+                const updatedUser = { ...currentUser, profile_pic: data.profile_pic };
+                localStorage.setItem('unmocked_user', JSON.stringify(updatedUser));
+                window.dispatchEvent(new Event('storage'));
+            } else {
+                alert(data.error || 'Failed to upload photo');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Upload failed');
+        }
+    };
+
     const loadHistoricalLeaderboard = async (code) => {
         setLoadingLeaderboard(true);
         try {
@@ -269,8 +297,15 @@ const ProfileInner = () => {
                     <div className={cx('profile-main-col')}>
                         <Card className={cx('profile-info-card', 'glass')}>
                             <div className={cx('profile-meta-row')}>
-                                <div className={cx('profile-avatar')}>
-                                    {(profile.name || "").charAt(0).toUpperCase()}
+                                <div className={cx('profile-avatar')} style={{ position: 'relative', overflow: 'hidden', cursor: (!queryEmail && !queryName) ? 'pointer' : 'default' }}>
+                                    {profile.profile_pic ? (
+                                        <img src={profile.profile_pic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        (profile.name || "").charAt(0).toUpperCase()
+                                    )}
+                                    {(!queryEmail && !queryName) && (
+                                        <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} title="Change Profile Photo" />
+                                    )}
                                 </div>
                                 <div className={cx('profile-details')}>
                                     <h2>{profile.name}</h2>
@@ -656,6 +691,13 @@ const ProfileInner = () => {
                                                 <div className={cx('rank-circle')} style={{ width: '36px', height: '36px', borderRadius: '50%', background: idx === 0 ? '#facc15' : idx === 1 ? '#9ca3af' : idx === 2 ? '#b45309' : 'rgba(255,255,255,0.1)', color: idx < 3 ? '#000' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>
                                                     {idx + 1}
                                                 </div>
+                                                {player.profile_pic ? (
+                                                    <img src={player.profile_pic} alt="Profile" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.2)' }} />
+                                                ) : (
+                                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--c-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem' }}>
+                                                        {(player.playerName || "U").charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                     <strong style={{ fontSize: '1.1rem' }}>{player.playerName}</strong>
                                                     {player.email && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{player.email}</span>}

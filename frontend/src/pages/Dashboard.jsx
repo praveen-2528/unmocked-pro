@@ -669,7 +669,16 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <button className="btn btn-glass" onClick={() => setStep(7)}>Global Reviews</button>
-              <button className="btn btn-glass" onClick={() => navigate('/profile')}>My Profile</button>
+              <button className="btn btn-glass" onClick={() => navigate('/profile')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {currentUser.profile_pic ? (
+                  <img src={currentUser.profile_pic} alt="Profile" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--c-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                    {(currentUser.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                My Profile
+              </button>
               <button className="btn btn-glass" onClick={() => { useAuthStore.getState().logout(); navigate('/'); }}>Logout</button>
               {currentUser.is_admin && (
                 <Link to="/admin" style={{ textDecoration: 'none' }}><button className="btn btn-primary">Admin Panel</button></Link>

@@ -260,23 +260,31 @@ export default function GlobalRoomReviews({ currentUser, onBack }) {
                   {/* Participants */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                     <div style={{ display: 'flex' }}>
-                      {participants.slice(0, 4).map((name, pi) => (
-                        <div
-                          key={pi}
-                          title={name}
-                          style={{
-                            width: '28px', height: '28px', borderRadius: '50%',
-                            background: `hsl(${(name.charCodeAt(0) * 37) % 360}, 60%, 45%)`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '0.7rem', fontWeight: '700', color: '#fff',
-                            marginLeft: pi > 0 ? '-8px' : '0',
-                            border: '2px solid var(--surface-color)',
-                            zIndex: 4 - pi
-                          }}
-                        >
-                          {name.charAt(0).toUpperCase()}
-                        </div>
-                      ))}
+                      {participants.slice(0, 4).map((name, pi) => {
+                        const pic = participantPics[pi];
+                        return (
+                          <div
+                            key={pi}
+                            title={name}
+                            style={{
+                              width: '28px', height: '28px', borderRadius: '50%',
+                              background: pic && pic !== 'none' ? 'var(--bg-main)' : `hsl(${(name.charCodeAt(0) * 37) % 360}, 60%, 45%)`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.7rem', fontWeight: '700', color: '#fff',
+                              marginLeft: pi > 0 ? '-8px' : '0',
+                              border: '2px solid var(--surface-color)',
+                              zIndex: 4 - pi,
+                              overflow: 'hidden'
+                            }}
+                          >
+                            {pic && pic !== 'none' ? (
+                              <img src={pic} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                        );
+                      })}
                       {participants.length > 4 && (
                         <div style={{
                           width: '28px', height: '28px', borderRadius: '50%',

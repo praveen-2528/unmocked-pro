@@ -67,10 +67,10 @@ export default function TestEngine() {
     if (room) {
       const users = [];
       if (room.host && room.host.name) {
-        users.push({ id: room.host.id, name: room.host.name, isHost: true });
+        users.push({ id: room.host.id, name: room.host.name, profile_pic: room.host.profile_pic, isHost: true });
       }
       if (room.guests) {
-        room.guests.forEach(g => users.push({ id: g.id, name: g.name, isHost: false }));
+        room.guests.forEach(g => users.push({ id: g.id, name: g.name, profile_pic: g.profile_pic, isHost: false }));
       }
       setRoomStatusData(users);
     }
@@ -336,6 +336,7 @@ export default function TestEngine() {
           return {
             id: pr.user_id,
             name: pr.user_name || pr.user_email || 'Unknown Player',
+            profile_pic: pr.user_profile_pic,
             isHost: false,
             submitted: submitted
           };
@@ -1306,8 +1307,17 @@ export default function TestEngine() {
             
                                return (
                                  <div key={i} style={{ border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '10px', marginBottom: '10px', background: 'white' }}>
-                                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                     <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e293b' }}>{u.name}</span>
+                                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
+                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                       {u.profile_pic ? (
+                                         <img src={u.profile_pic} alt="Profile" style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} />
+                                       ) : (
+                                         <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--c-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
+                                           {(u.name || "U").charAt(0).toUpperCase()}
+                                         </div>
+                                       )}
+                                       <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e293b' }}>{u.name}</span>
+                                     </div>
                                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: resultColor }}>{resultText}</span>
                                    </div>
                                    <div style={{ fontSize: '12px', color: '#758ba8' }}>
@@ -1337,8 +1347,17 @@ export default function TestEngine() {
                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                  {Object.values(liveStats).map((st, i) => (
                    <div key={i} style={{ background: 'var(--bg-alt)', padding: '8px', borderRadius: '4px' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                       <strong style={{ color: 'var(--text-dark)', fontSize: '13px' }}>{st.name} {st.name === currentUser.name && '(You)'}</strong>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {st.profile_pic ? (
+                             <img src={st.profile_pic} alt="Profile" style={{ width: '16px', height: '16px', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                             <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--c-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
+                               {(st.name || "U").charAt(0).toUpperCase()}
+                             </div>
+                          )}
+                          <strong style={{ color: 'var(--text-dark)', fontSize: '13px' }}>{st.name} {st.name === currentUser.name && '(You)'}</strong>
+                        </div>
                        <span style={{ color: 'var(--status-answered)', fontSize: '12px', fontWeight: 'bold' }}>{st.accuracy?.toFixed(0) || 0}% Acc</span>
                      </div>
                      <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>

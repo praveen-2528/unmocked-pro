@@ -41,6 +41,20 @@ const io = new Server(server, {
 
 // Root route removed to allow static frontend to be served
 
+// Profile Upload Endpoint
+app.post('/api/profile/upload', upload.single('profile_pic'), (req, res) => {
+  const userId = req.body.userId;
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const profilePicUrl = `/uploads/${req.file.filename}`;
+  
+  db.run('UPDATE users SET profile_pic = ? WHERE id = ?', [profilePicUrl, userId], (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ message: 'Profile picture updated', profile_pic: profilePicUrl });
+  });
+});
+
 // Authentication Endpoints
 app.post('/api/signup', async (req, res) => {
   const { name, email, password } = req.body;
@@ -100,6 +114,7 @@ app.post('/api/login', (req, res) => {
             id: user.id,
             name: user.name,
             email: user.email,
+            profile_pic: user.profile_pic,
             is_admin: user.is_admin === 1 || user.is_admin === true
           }
         });
@@ -114,6 +129,7 @@ app.post('/api/login', (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        profile_pic: user.profile_pic,
         is_admin: user.is_admin === 1 || user.is_admin === true
       }
     });
@@ -227,7 +243,7 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
 
   app.get('/api/admin/history-rooms/:sessionId', isAdmin, (req, res) => {
     const query = `
-      SELECT tr.*, u.name as user_name, u.email as user_email
+      SELECT tr.*, u.name as user_name, u.email as user_email, u.profile_pic as user_profile_pic
       FROM test_results tr
       LEFT JOIN users u ON tr.user_id = u.id
       WHERE tr.test_session_id = ?
@@ -246,7 +262,8 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
         tr.game_mode, 
         MAX(tr.created_at) as created_at, 
         COUNT(tr.user_id) as participants,
-        GROUP_CONCAT(COALESCE(u.name, 'Unknown'), ', ') as participant_names
+        GROUP_CONCAT(COALESCE(u.name, 'Unknown'), ',') as participant_names,
+        GROUP_CONCAT(COALESCE(u.profile_pic, 'none'), ',') as participant_pics
       FROM test_results tr
       LEFT JOIN users u ON tr.user_id = u.id
       WHERE tr.test_session_id IS NOT NULL
@@ -261,7 +278,7 @@ app.get('/api/admin/users', isAdmin, (req, res) => {
 
   app.get('/api/public/history-rooms/:sessionId', (req, res) => {
     const query = `
-      SELECT tr.*, u.name as user_name, u.email as user_email
+      SELECT tr.*, u.name as user_name, u.email as user_email, u.profile_pic as user_profile_pic
       FROM test_results tr
       LEFT JOIN users u ON tr.user_id = u.id
       WHERE tr.test_session_id = ?
@@ -552,7 +569,7 @@ app.get('/api/history/room/:code', (req, res) => {
   if (!testCode) return res.status(400).json({ error: 'Room code required.' });
 
   db.all(`
-      SELECT tr.*, u.name as player_name, u.email as player_email
+      SELECT tr.*, u.name as player_name, u.email as player_email, u.profile_pic as player_profile_pic
       FROM test_results tr
       LEFT JOIN users u ON tr.user_id = u.id
       WHERE tr.test_session_id = ?
@@ -567,6 +584,7 @@ app.get('/api/history/room/:code', (req, res) => {
       const leaderboard = rows.map(r => ({
           playerId: r.user_id,
           playerName: r.player_name || 'Unknown',
+          profile_pic: r.player_profile_pic,
           email: r.player_email,
           score: r.score,
           total: r.total_questions,
@@ -626,14 +644,14 @@ app.get('/api/users/profile', (req, res) => {
   if (email === 'undefined' || email === 'null' || !email || email.trim() === '') email = null;
   if (name === 'undefined' || name === 'null' || !name || name.trim() === '') name = null;
 
-  let query = 'SELECT id, name, email, xp FROM users WHERE id = ?';
+  let query = 'SELECT id, name, email, xp, profile_pic FROM users WHERE id = ?';
   let params = [authUserId];
 
   if (email) {
-      query = 'SELECT id, name, email, xp FROM users WHERE email = ?';
+      query = 'SELECT id, name, email, xp, profile_pic FROM users WHERE email = ?';
       params = [email.toLowerCase().trim()];
   } else if (name) {
-      query = 'SELECT id, name, email, xp FROM users WHERE name = ?';
+      query = 'SELECT id, name, email, xp, profile_pic FROM users WHERE name = ?';
       params = [name.trim()];
   }
 
@@ -1169,7 +1187,7 @@ io.on('connection', (socket) => {
       currentSectionIndex: 0,
       answersSubmitted: {}, // tracking who submitted for the current friendly question
       stats: {
-        [user.id]: { name: user.name, attempted: 0, skipped: 0, right: 0, wrong: 0, accuracy: 0, score: 0, timeTaken: 0 }
+        [user.id]: { name: user.name, profile_pic: user.profile_pic, attempted: 0, skipped: 0, right: 0, wrong: 0, accuracy: 0, score: 0, timeTaken: 0 }
       }
     };
     socket.join(code);
@@ -1183,7 +1201,7 @@ io.on('connection', (socket) => {
 
     if (!exists) {
       rooms[code].guests.push({ socketId: socket.id, connected: true, ...user });
-      rooms[code].stats[user.id] = { name: user.name, attempted: 0, skipped: 0, right: 0, wrong: 0, accuracy: 0, score: 0, timeTaken: 0 };
+      rooms[code].stats[user.id] = { name: user.name, profile_pic: user.profile_pic, attempted: 0, skipped: 0, right: 0, wrong: 0, accuracy: 0, score: 0, timeTaken: 0 };
     } else if (rooms[code].host.id === user.id) {
        rooms[code].host.socketId = socket.id;
        rooms[code].host.connected = true;

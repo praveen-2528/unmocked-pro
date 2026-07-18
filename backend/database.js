@@ -18,6 +18,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        profile_pic TEXT,
         is_admin BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
