@@ -1175,9 +1175,23 @@ export default function TestEngine() {
                                               key={i} 
                                               className={`te-grid-btn status-${cls}`}
                                               onClick={() => {
-                                                  if (reviewMode || gameMode !== 'Multiplayer-Friendly') setCurrentQuestionIdx(i);
+                                                  if (reviewMode || gameMode !== 'Multiplayer-Friendly') {
+                                                      setCurrentQuestionIdx(i);
+                                                  } else {
+                                                      const qId = currentSection.questions[i].id;
+                                                      const isRevealed = friendlyRevealed[qId] === true;
+                                                      let activeRoomQIdx = currentSection.questions.findIndex(q => friendlyRevealed[q.id] !== true);
+                                                      if (activeRoomQIdx === -1) activeRoomQIdx = currentSection.questions.length;
+                                                      
+                                                      if (isRevealed || i === activeRoomQIdx) {
+                                                          setCurrentQuestionIdx(i);
+                                                      }
+                                                  }
                                               }}
-                                              style={currentQuestionIdx === i ? { border: '2px solid #000' } : {}}
+                                              style={{
+                                                  ...(currentQuestionIdx === i ? { border: '2px solid #000' } : {}),
+                                                  ...(!reviewMode && gameMode === 'Multiplayer-Friendly' && currentQuestionIdx !== i && i === currentSection.questions.findIndex(q => friendlyRevealed[q.id] !== true) ? { border: '2px dashed var(--accent-color)' } : {})
+                                              }}
                                           >
                                               {i + 1}
                                           </button>
