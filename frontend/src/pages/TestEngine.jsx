@@ -28,6 +28,7 @@ export default function TestEngine() {
   const [instructionsAccepted, setInstructionsAccepted] = useState(false);
   const [scoreData, setScoreData] = useState(null);
   const [testSessionId, setTestSessionId] = useState('');
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [pastRoomResults, setPastRoomResults] = useState(null);
   
   const [timeSpentMap, setTimeSpentMap] = useState({});
@@ -273,6 +274,7 @@ export default function TestEngine() {
          
          setIsSubmitted(true);
          setSearchParams({ view: 'results' });
+         setSessionLoaded(true);
       })
       .catch(() => {
         // Not submitted yet, load active session progress
@@ -285,9 +287,33 @@ export default function TestEngine() {
             if (data.answers && data.status_map) {
               setAnswers(data.answers);
               setStatusMap(data.status_map);
+              
+              const mpRoom = JSON.parse(localStorage.getItem('multiplayer_room'));
+              const td = JSON.parse(localStorage.getItem('active_test_data'));
+              if (mpRoom && td) {
+                  let attempted = 0, skipped = 0, right = 0, wrong = 0;
+                  td.sections.forEach(sec => {
+                    sec.questions.forEach(q => {
+                      const userAns = data.answers[q.id];
+                      const status = data.status_map[q.id];
+                      if (status === 'answered' || status === 'review') {
+                        if (userAns) {
+                          attempted++;
+                          if (userAns === q.answer) right++;
+                          else wrong++;
+                        }
+                      } else if (status === 'not_answered') {
+                        skipped++;
+                      }
+                    });
+                  });
+                  const accuracy = attempted > 0 ? ((right / attempted) * 100) : 0;
+                  socket.emit('submitStats', { code: mpRoom.code, userId: currentUser.id, statsUpdate: { attempted, skipped, right, wrong, accuracy } });
+              }
             }
           })
-          .catch(err => { /* Ignore if no session exists yet */ });
+          .catch(err => { /* Ignore if no session exists yet */ })
+          .finally(() => setSessionLoaded(true));
       });
   }, [testSessionId]);
 
@@ -320,7 +346,7 @@ export default function TestEngine() {
   }, [currentQuestionIdx, currentSectionIdx, pastRoomResults, reviewMode, gameMode, testData]);
 
   useEffect(() => {
-    if (!testSessionId || !currentUser.id || isSubmitted) return;
+    if (!testSessionId || !currentUser.id || isSubmitted || !sessionLoaded) return;
     
     // Debounce the save to prevent spamming the server
     const timer = setTimeout(() => {
