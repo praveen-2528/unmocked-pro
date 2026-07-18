@@ -23,6 +23,13 @@ export default function RoomReview({ sessionId, onBack }) {
       });
   }, [sessionId]);
 
+  useEffect(() => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise().catch((err) => console.error('MathJax error:', err));
+    }
+  }, [currentQuestionIdx, roomData]);
+
+
   if (loading) return <div style={{ padding: '40px', color: '#fff' }}>Loading room details...</div>;
   if (!roomData || !Array.isArray(roomData) || roomData.length === 0) return <div style={{ padding: '40px', color: '#fff' }}>No data found for this room.</div>;
 
