@@ -328,25 +328,41 @@ export default function TestEngine() {
   }, [testSessionId]);
 
   useEffect(() => {
-    if (reviewMode && gameMode === 'Multiplayer-Friendly' && pastRoomResults && testData && testData.sections) {
+    if (isMultiplayer && testData && testData.sections) {
       const currentQuestion = testData.sections[currentSectionIdx]?.questions[currentQuestionIdx];
       if (currentQuestion) {
-        const newRoomStatusData = pastRoomResults.map(pr => {
+        let sourceData = [];
+        if (reviewMode && pastRoomResults) {
+          sourceData = pastRoomResults.map(pr => ({
+             id: pr.user_id,
+             name: pr.user_name || pr.user_email || 'Unknown Player',
+             profile_pic: pr.user_profile_pic,
+             answers: pr.answers ? (typeof pr.answers === 'string' ? JSON.parse(pr.answers) : pr.answers) : {},
+             time_spent: pr.time_spent ? (typeof pr.time_spent === 'string' ? JSON.parse(pr.time_spent) : pr.time_spent) : {}
+          }));
+        } else if (!reviewMode && liveStats) {
+          sourceData = Object.entries(liveStats).map(([userId, ls]) => ({
+             id: userId,
+             name: ls.name || 'Unknown Player',
+             profile_pic: ls.profile_pic,
+             answers: ls.answers || {},
+             time_spent: ls.timeSpent || {}
+          }));
+        }
+
+        const newRoomStatusData = sourceData.map(sd => {
           let submitted = null;
           try {
-            const ans = pr.answers ? (typeof pr.answers === 'string' ? JSON.parse(pr.answers) : pr.answers) : {};
-            const ts = pr.time_spent ? (typeof pr.time_spent === 'string' ? JSON.parse(pr.time_spent) : pr.time_spent) : {};
             const qId = currentQuestion.id;
-            
-            if (ans[qId] !== undefined) {
-              submitted = { answer: ans[qId], timeTaken: ts[qId] || 0 };
+            if (sd.answers[qId] !== undefined) {
+              submitted = { answer: sd.answers[qId], timeTaken: sd.time_spent[qId] || 0 };
             }
           } catch(e) {}
           
           return {
-            id: pr.user_id,
-            name: pr.user_name || pr.user_email || 'Unknown Player',
-            profile_pic: pr.user_profile_pic,
+            id: sd.id,
+            name: sd.name,
+            profile_pic: sd.profile_pic,
             isHost: false,
             submitted: submitted
           };
@@ -354,7 +370,7 @@ export default function TestEngine() {
         setRoomStatusData(newRoomStatusData);
       }
     }
-  }, [currentQuestionIdx, currentSectionIdx, pastRoomResults, reviewMode, gameMode, testData]);
+  }, [currentQuestionIdx, currentSectionIdx, pastRoomResults, reviewMode, gameMode, testData, liveStats, isMultiplayer]);
 
   useEffect(() => {
     if (!testSessionId || !currentUser.id || isSubmitted || !sessionLoaded) return;
@@ -362,21 +378,17 @@ export default function TestEngine() {
     // Save locally immediately as a fallback against network disconnects
     localStorage.setItem(`unmocked_session_${testSessionId}`, JSON.stringify({ answers, status_map: statusMap }));
 
-    // Debounce the save to prevent spamming the server
-    const timer = setTimeout(() => {
-      fetch('/api/test-session/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: testSessionId,
-          user_id: currentUser.id,
-          answers,
-          status_map: statusMap
-        })
-      }).catch(err => console.error('Failed to save session', err));
-    }, 500); // 500ms debounce
-    
-    return () => clearTimeout(timer);
+    // Save to the server instantly
+    fetch('/api/test-session/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: testSessionId,
+        user_id: currentUser.id,
+        answers,
+        status_map: statusMap
+      })
+    }).catch(err => console.error('Failed to save session', err));
   }, [answers, statusMap, testSessionId, isSubmitted]);
 
   useEffect(() => {
@@ -621,7 +633,7 @@ export default function TestEngine() {
     });
     
     const accuracy = attempted > 0 ? ((right / attempted) * 100) : 0;
-    socket.emit('submitStats', { code: room.code, userId: currentUser.id, statsUpdate: { attempted, skipped, right, wrong, accuracy } });
+    socket.emit('submitStats', { code: room.code, userId: currentUser.id, statsUpdate: { attempted, skipped, right, wrong, accuracy, answers: newAnswers, timeSpent: timeSpentMap } });
   };
 
   const previousQuestion = () => {
