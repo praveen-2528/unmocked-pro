@@ -284,9 +284,13 @@ export default function TestEngine() {
             return res.json();
           })
           .then(data => {
-            if (data.answers && data.status_map) {
-              setAnswers(data.answers);
-              setStatusMap(data.status_map);
+            const localSession = JSON.parse(localStorage.getItem(`unmocked_session_${testSessionId}`) || '{}');
+            const mergedAnswers = { ...(data.answers || {}), ...(localSession.answers || {}) };
+            const mergedStatus = { ...(data.status_map || {}), ...(localSession.status_map || {}) };
+
+            if (Object.keys(mergedAnswers).length > 0 || Object.keys(mergedStatus).length > 0) {
+              setAnswers(mergedAnswers);
+              setStatusMap(mergedStatus);
               
               const mpRoom = JSON.parse(localStorage.getItem('multiplayer_room'));
               const td = JSON.parse(localStorage.getItem('active_test_data'));
@@ -294,8 +298,8 @@ export default function TestEngine() {
                   let attempted = 0, skipped = 0, right = 0, wrong = 0;
                   td.sections.forEach(sec => {
                     sec.questions.forEach(q => {
-                      const userAns = data.answers[q.id];
-                      const status = data.status_map[q.id];
+                      const userAns = mergedAnswers[q.id];
+                      const status = mergedStatus[q.id];
                       if (status === 'answered' || status === 'review') {
                         if (userAns) {
                           attempted++;
@@ -312,7 +316,13 @@ export default function TestEngine() {
               }
             }
           })
-          .catch(err => { /* Ignore if no session exists yet */ })
+          .catch(err => { 
+            const localSession = JSON.parse(localStorage.getItem(`unmocked_session_${testSessionId}`) || '{}');
+            if (localSession.answers && localSession.status_map) {
+              setAnswers(localSession.answers);
+              setStatusMap(localSession.status_map);
+            }
+          })
           .finally(() => setSessionLoaded(true));
       });
   }, [testSessionId]);
@@ -349,6 +359,9 @@ export default function TestEngine() {
   useEffect(() => {
     if (!testSessionId || !currentUser.id || isSubmitted || !sessionLoaded) return;
     
+    // Save locally immediately as a fallback against network disconnects
+    localStorage.setItem(`unmocked_session_${testSessionId}`, JSON.stringify({ answers, status_map: statusMap }));
+
     // Debounce the save to prevent spamming the server
     const timer = setTimeout(() => {
       fetch('/api/test-session/update', {
