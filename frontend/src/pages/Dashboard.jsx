@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check, Pause, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef } from 'react';
+import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check, Pause, Trash2, MessageCircle, Send, XCircle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
@@ -38,6 +38,17 @@ export default function Dashboard() {
   const [friendlyMode, setFriendlyMode] = useState('Real'); // 'Real', 'Friendly'
   const [joinCode, setJoinCode] = useState('');
   const [lobbyData, setLobbyData] = useState(null);
+
+  // Chat State
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [unreadChat, setUnreadChat] = useState(false);
+  const [latestMessage, setLatestMessage] = useState(null);
+  
+  const showChatRef = useRef(false);
+  const latestMessageTimerRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const [activeRooms, setActiveRooms] = useState([]);
   const [editingNameId, setEditingNameId] = useState(null);
   const [editingNameValue, setEditingNameValue] = useState('');
@@ -84,6 +95,20 @@ export default function Dashboard() {
       setLobbyData(room);
       setStep(5);
     });
+    
+    socket.on('chatMessage', (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+      if (!showChatRef.current) {
+        setUnreadChat(true);
+        setLatestMessage(msg);
+        if (latestMessageTimerRef.current) {
+          clearTimeout(latestMessageTimerRef.current);
+        }
+        latestMessageTimerRef.current = setTimeout(() => {
+          setLatestMessage(null);
+        }, 4000);
+      }
+    });
     socket.on('roomError', (err) => {
       setError(err);
     });
@@ -103,11 +128,23 @@ export default function Dashboard() {
     
     return () => {
       socket.off('roomUpdated');
+      socket.off('chatMessage');
       socket.off('roomError');
       socket.off('gameStarted');
       socket.off('roomClosed');
     }
   }, []);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, showChat]);
+
+  useEffect(() => {
+    showChatRef.current = showChat;
+    if (showChat) setUnreadChat(false);
+  }, [chatMessages, showChat]);
 
   // Safety check: if user refreshes on a later step without an active blueprint, bump them to step 1
   useEffect(() => {
@@ -1234,6 +1271,83 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {/* Floating Chat Bubble for Lobby */}
+            <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              {showChat && (
+                <div className="animate-fade-in" style={{ width: '320px', height: '400px', background: 'var(--bg-main)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '12px', marginBottom: '16px', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: 'var(--c-secondary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                      <MessageCircle size={18} /> Lobby Chat
+                    </div>
+                    <XCircle size={18} style={{ cursor: 'pointer', color: '#fff' }} onClick={() => setShowChat(false)} />
+                  </div>
+                  <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-alt)' }}>
+                    {chatMessages.map((msg, idx) => {
+                      const isMe = msg.user.id === currentUser.id;
+                      return (
+                        <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                          {!isMe && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', marginLeft: '4px' }}>{msg.user.name}</div>}
+                          <div style={{ background: isMe ? 'var(--status-answered)' : '#fff', color: isMe ? '#fff' : 'var(--text-dark)', border: isMe ? 'none' : '1px solid var(--border-color)', padding: '8px 12px', borderRadius: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0', fontSize: '0.9rem', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                            {msg.text}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                  <div style={{ padding: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '8px', background: '#fff' }}>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      style={{ padding: '8px 12px', fontSize: '0.9rem', flex: 1, borderRadius: '20px', border: '1px solid var(--border-color)', color: 'var(--text-dark)', background: 'var(--bg-alt)' }} 
+                      placeholder="Message..." 
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && chatInput.trim()) {
+                          socket.emit('chatMessage', { code: lobbyData.code, user: currentUser, text: chatInput.trim() });
+                          setChatInput('');
+                        }
+                      }}
+                    />
+                    <button 
+                      style={{ background: 'var(--status-answered)', border: 'none', color: '#fff', padding: '8px', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      onClick={() => {
+                        if (chatInput.trim()) {
+                          socket.emit('chatMessage', { code: lobbyData.code, user: currentUser, text: chatInput.trim() });
+                          setChatInput('');
+                        }
+                      }}
+                    ><Send size={16}/></button>
+                  </div>
+                </div>
+              )}
+              {!showChat && (
+                <div style={{ position: 'relative' }}>
+                  {latestMessage && (
+                    <div className="animate-fade-in" style={{ position: 'absolute', bottom: '70px', right: '0px', width: '250px', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', color: 'var(--text-dark)' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--c-primary)', marginBottom: '4px' }}>{latestMessage.user.name}</div>
+                      <div style={{ fontSize: '0.9rem' }}>{latestMessage.text}</div>
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => setShowChat(true)}
+                    style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--c-secondary)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', transition: 'transform 0.2s', position: 'relative' }}
+                    onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <MessageCircle size={28} />
+                    {unreadChat && (
+                      <span style={{ position: 'absolute', top: '0px', right: '0px', background: '#e74c3c', color: 'white', fontSize: '12px', fontWeight: 'bold', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
+                        !
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+            
           </div>
         )}
 
