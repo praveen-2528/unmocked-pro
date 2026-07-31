@@ -41,6 +41,15 @@ const io = new Server(server, {
 
 // Root route removed to allow static frontend to be served
 
+// Daily Updates Endpoint
+app.get('/api/daily-updates', (req, res) => {
+  db.get('SELECT * FROM daily_updates ORDER BY date DESC LIMIT 1', (err, row) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!row) return res.json(null);
+    res.json(row);
+  });
+});
+
 // Profile Upload Endpoint
 app.post('/api/profile/upload', upload.single('profile_pic'), (req, res) => {
   const userId = req.body.userId;
@@ -1516,4 +1525,8 @@ if (fs.existsSync(frontendDist)) {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
+  
+  // Start the email sync daemon
+  const emailSync = require('./emailSync');
+  emailSync.startDaemon();
 });

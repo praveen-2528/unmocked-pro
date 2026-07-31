@@ -261,6 +261,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS daily_updates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT UNIQUE NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
   }
 });
 

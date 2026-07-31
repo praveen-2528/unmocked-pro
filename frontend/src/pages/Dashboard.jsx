@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [pastTests, setPastTests] = useState([]);
   const [savedTests, setSavedTests] = useState([]);
   const [studyRooms, setStudyRooms] = useState([]);
+  const [dailyUpdate, setDailyUpdate] = useState(null);
   
   // Wizard State
   const [searchParams, setSearchParams] = useSearchParams();
@@ -153,6 +154,17 @@ export default function Dashboard() {
       setSearchParams({ step: '1' });
     }
   }, [step, selectedBp, setSearchParams]);
+
+  useEffect(() => {
+    fetch('/api/daily-updates')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.content) {
+          setDailyUpdate(JSON.parse(data.content));
+        }
+      })
+      .catch(err => console.error('Failed to fetch daily update', err));
+  }, []);
 
   useEffect(() => {
     if (step === 3 && testMode === 'Full' && selectedBp && selectedBp.sections.length > 0) {
@@ -733,6 +745,60 @@ export default function Dashboard() {
         {/* Step 0: Home */}
         {step === 0 && (
           <div className="animate-fade-in">
+
+            {dailyUpdate && (
+              <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(74, 222, 128, 0.02) 100%)', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <h2 className="geist-pixel" style={{ fontSize: '1.8rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <FileText size={28} /> Daily Resource Centre
+                  </h2>
+                  <div style={{ background: 'rgba(74,222,128,0.2)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>
+                    {dailyUpdate.date}
+                  </div>
+                </div>
+
+                {dailyUpdate.announcement && (
+                  <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
+                    <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Announcement</strong>
+                    <p style={{ fontSize: '1.1rem' }}>{dailyUpdate.announcement}</p>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                  {dailyUpdate.schedule && dailyUpdate.schedule.length > 0 && (
+                    <div>
+                      <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Clock size={20} /> Today's Schedule
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {dailyUpdate.schedule.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px' }}>
+                            <div style={{ color: 'var(--accent-color)', fontWeight: 'bold', minWidth: '80px' }}>{item.time}</div>
+                            <div>{item.task}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {dailyUpdate.resources && dailyUpdate.resources.length > 0 && (
+                    <div>
+                      <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BookOpen size={20} /> Resources
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {dailyUpdate.resources.map((res, idx) => (
+                          <a key={idx} href={res.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-primary)', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(74,222,128,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.2)'}>
+                            <span>{res.title}</span>
+                            <ArrowRight size={16} style={{ color: 'var(--accent-color)' }} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', marginBottom: '40px' }}>
               <BookOpen size={48} style={{ color: 'var(--accent-color)', margin: '0 auto 24px auto' }} />
