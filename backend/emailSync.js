@@ -24,6 +24,9 @@ async function processMessage(msg) {
         let text = parsed.text || parsed.html || '';
         // Normalize smart quotes and non-breaking spaces (common Gmail rich text issues)
         text = text.replace(/[“”]/g, '"').replace(/\u00A0/g, ' ').replace(/&quot;/g, '"');
+        
+        // Remove all literal control characters (newlines, tabs) which break JSON.parse if inside a string
+        text = text.replace(/[\x00-\x1F]/g, ' ');
 
         // Extract JSON block that contains a date and main_topic
         const jsonMatch = text.match(/\{[\s\S]*"main_topic"[\s\S]*\}/);
