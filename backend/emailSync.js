@@ -20,7 +20,11 @@ async function processMessage(msg) {
     try {
         const parsed = await simpleParser(msg.source);
         
-        const text = parsed.text || '';
+        // Use text or fallback
+        let text = parsed.text || parsed.html || '';
+        // Normalize smart quotes and non-breaking spaces (common Gmail rich text issues)
+        text = text.replace(/[“”]/g, '"').replace(/\u00A0/g, ' ').replace(/&quot;/g, '"');
+
         // Extract JSON block that contains a date and main_topic
         const jsonMatch = text.match(/\{[\s\S]*"main_topic"[\s\S]*\}/);
         
@@ -41,6 +45,7 @@ async function processMessage(msg) {
                 }
             } catch(e) {
                 console.error('[EmailSync] Failed to parse JSON block:', e.message);
+                console.log('[EmailSync] Attempted to parse string:', jsonMatch[0].substring(0, 200) + '...');
             }
         }
     } catch(e) {
@@ -52,8 +57,11 @@ async function fetchUnreadEmails() {
     try {
         let lock = await client.getMailboxLock('INBOX');
         try {
-            console.log('[EmailSync] Checking for unread emails from praveenbhukya9522@gmail.com...');
-            for await (let message of client.fetch({ unseen: true, from: 'praveenbhukya9522@gmail.com' }, { source: true, uid: true })) {
+            console.log('[EmailSync] Checking for recent emails from praveenbhukya9522@gmail.com...');
+            const twoDaysAgo = new Date();
+            twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+            
+            for await (let message of client.fetch({ since: twoDaysAgo, from: 'praveenbhukya9522@gmail.com' }, { source: true, uid: true })) {
                 await processMessage(message);
                 await client.messageFlagsAdd({ uid: message.uid }, ['\\Seen']);
             }
