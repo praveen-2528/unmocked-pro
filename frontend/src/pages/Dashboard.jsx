@@ -747,56 +747,65 @@ export default function Dashboard() {
           <div className="animate-fade-in">
 
             {dailyUpdate && (
-              <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(74, 222, 128, 0.02) 100%)', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                  <h2 className="geist-pixel" style={{ fontSize: '1.8rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <FileText size={28} /> Daily Resource Centre
-                  </h2>
+              <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(0, 0, 0, 0.2) 100%)', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <h2 className="geist-pixel" style={{ fontSize: '1.8rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                      <FileText size={28} /> Day {dailyUpdate.day} - {dailyUpdate.exam_name || 'Exam Prep'}
+                    </h2>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
+                      <span style={{ color: 'var(--text-primary)' }}>Topic:</span> {dailyUpdate.main_topic}
+                    </div>
+                  </div>
                   <div style={{ background: 'rgba(74,222,128,0.2)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>
                     {dailyUpdate.date}
                   </div>
                 </div>
 
-                {dailyUpdate.announcement && (
-                  <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
-                    <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Announcement</strong>
-                    <p style={{ fontSize: '1.1rem' }}>{dailyUpdate.announcement}</p>
+                <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
+                  <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Subtopics to Cover</strong>
+                  <p style={{ fontSize: '1.1rem', lineHeight: '1.5' }}>{dailyUpdate.subtopics}</p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Daily Hours</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.daily_pk_hours} hrs</span>
                   </div>
-                )}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Priority</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Rank {dailyUpdate.priority_rank}</span>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Weightage</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.exam_weightage}</span>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Complexity</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.complexity}</span>
+                  </div>
+                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                  {dailyUpdate.schedule && dailyUpdate.schedule.length > 0 && (
-                    <div>
-                      <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Clock size={20} /> Today's Schedule
-                      </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {dailyUpdate.schedule.map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px' }}>
-                            <div style={{ color: 'var(--accent-color)', fontWeight: 'bold', minWidth: '80px' }}>{item.time}</div>
-                            <div>{item.task}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {dailyUpdate.resources && dailyUpdate.resources.length > 0 && (
-                    <div>
-                      <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <BookOpen size={20} /> Resources
-                      </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {dailyUpdate.resources.map((res, idx) => (
-                          <a key={idx} href={res.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-primary)', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(74,222,128,0.1)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.2)'}>
-                            <span>{res.title}</span>
+                {dailyUpdate.dedicated_sources && dailyUpdate.dedicated_sources.length > 0 && (
+                  <div>
+                    <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <BookOpen size={20} /> Dedicated Study Sources
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                      {dailyUpdate.dedicated_sources.map((res, idx) => {
+                        const rawUrl = res.url || '';
+                        const m = rawUrl.match(/\[.*?\]\((.*?)\)/);
+                        const cleanUrl = m ? m[1] : rawUrl;
+                        return (
+                          <a key={idx} href={cleanUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-primary)', transition: 'all 0.2s', border: '1px solid transparent' }} onMouseOver={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.3)'; }} onMouseOut={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.2)'; e.currentTarget.style.borderColor = 'transparent'; }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>{res.source_name}</span>
                             <ArrowRight size={16} style={{ color: 'var(--accent-color)' }} />
                           </a>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 

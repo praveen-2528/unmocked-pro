@@ -21,13 +21,13 @@ async function processMessage(msg) {
         const parsed = await simpleParser(msg.source);
         
         const text = parsed.text || '';
-        // Extract JSON block that contains a date and schedule
-        const jsonMatch = text.match(/\{[\s\S]*"schedule"[\s\S]*\}/);
+        // Extract JSON block that contains a date and main_topic
+        const jsonMatch = text.match(/\{[\s\S]*"main_topic"[\s\S]*\}/);
         
         if (jsonMatch) {
             try {
                 const data = JSON.parse(jsonMatch[0]);
-                if (data.date && data.schedule) {
+                if (data.date && data.main_topic) {
                     console.log(`[EmailSync] Found valid daily update for ${data.date}`);
                     
                     db.run(`
