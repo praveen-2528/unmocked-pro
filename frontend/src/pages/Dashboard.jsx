@@ -746,60 +746,98 @@ export default function Dashboard() {
         {step === 0 && (
           <div className="animate-fade-in">
 
+            <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', marginBottom: '32px' }}>
+              <BookOpen size={48} style={{ color: 'var(--accent-color)', margin: '0 auto 20px auto' }} />
+              <h2 className="geist-pixel" style={{ fontSize: '1.6rem', marginBottom: '12px' }}>Ready to practice?</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', maxWidth: '500px', margin: '0 auto 20px auto', fontSize: '0.95rem' }}>
+                Create a highly accurate, AI-generated mock test modeled after standard competitive exams.
+              </p>
+              <button className="btn btn-primary" onClick={() => setStep(1)} style={{ padding: '10px 24px', fontSize: '1rem', marginBottom: '16px' }}>
+                Start a New Mock Test <ArrowRight size={18} />
+              </button>
+              
+              <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px', marginTop: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
+                <h3 className="geist-pixel" style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Live Test Sessions</h3>
+                {activeRooms.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No live test sessions right now.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '500px' }}>
+                    {activeRooms.map(r => (
+                      <div key={r.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '0.9rem' }}>{r.hostName}'s Room</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{r.examName} • {r.playersCount} Players</div>
+                        </div>
+                        <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => handleJoinRoom(r.code)}>
+                          {r.state === 'LOBBY' ? `Join (${r.code})` : r.state === 'PLAYING' ? `Rejoin (${r.code})` : 'View Results'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <input type="text" className="input-field" placeholder="Or enter 6-digit code..." value={joinCode} onChange={e => setJoinCode(e.target.value)} style={{ width: '200px', fontSize: '0.9rem', padding: '8px 12px' }} />
+                  <button className="btn btn-glass" style={{ padding: '8px 16px', fontSize: '0.9rem' }} onClick={() => handleJoinRoom()}>Join Private</button>
+                </div>
+                {error && step === 0 && <p style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</p>}
+              </div>
+            </div>
+
             {dailyUpdate && (
-              <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(0, 0, 0, 0.2) 100%)', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h2 className="geist-pixel" style={{ fontSize: '1.8rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                      <FileText size={28} /> Day {dailyUpdate.day} - {dailyUpdate.exam_name || 'Exam Prep'}
+                    <h2 className="geist-pixel" style={{ fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                      <FileText size={24} style={{ color: 'var(--accent-color)' }} /> Day {dailyUpdate.day} - {dailyUpdate.exam_name || 'Exam Prep'}
                     </h2>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                       <span style={{ color: 'var(--text-primary)' }}>Topic:</span> {dailyUpdate.main_topic}
                     </div>
                   </div>
-                  <div style={{ background: 'rgba(74,222,128,0.2)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>
+                  <div style={{ background: 'var(--glass-bg)', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)' }}>
                     {dailyUpdate.date}
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--accent-color)' }}>
-                  <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Subtopics to Cover</strong>
-                  <p style={{ fontSize: '1.1rem', lineHeight: '1.5' }}>{dailyUpdate.subtopics}</p>
+                <div style={{ marginBottom: '20px', padding: '14px', background: 'var(--glass-bg)', borderRadius: '8px', borderLeft: '3px solid var(--accent-color)', border: '1px solid var(--glass-border)' }}>
+                  <strong style={{ display: 'block', marginBottom: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Subtopics to Cover</strong>
+                  <p style={{ fontSize: '0.95rem', lineHeight: '1.4', margin: 0 }}>{dailyUpdate.subtopics}</p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Daily Hours</span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.daily_pk_hours} hrs</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                  <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daily Hours</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.daily_pk_hours} hrs</span>
                   </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Priority</span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Rank {dailyUpdate.priority_rank}</span>
+                  <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Priority</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Rank {dailyUpdate.priority_rank}</span>
                   </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Weightage</span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.exam_weightage}</span>
+                  <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Weightage</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.exam_weightage}</span>
                   </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Complexity</span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.complexity}</span>
+                  <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Complexity</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{dailyUpdate.complexity}</span>
                   </div>
                 </div>
 
                 {dailyUpdate.dedicated_sources && dailyUpdate.dedicated_sources.length > 0 && (
                   <div>
-                    <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <BookOpen size={20} /> Dedicated Study Sources
+                    <h3 className="geist-pixel" style={{ fontSize: '1.1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                      <BookOpen size={18} style={{ color: 'var(--accent-color)' }} /> Dedicated Study Sources
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
                       {dailyUpdate.dedicated_sources.map((res, idx) => {
                         const rawUrl = res.url || '';
                         const m = rawUrl.match(/\[.*?\]\((.*?)\)/);
                         const cleanUrl = m ? m[1] : rawUrl;
                         return (
-                          <a key={idx} href={cleanUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-primary)', transition: 'all 0.2s', border: '1px solid transparent' }} onMouseOver={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.1)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.3)'; }} onMouseOut={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.2)'; e.currentTarget.style.borderColor = 'transparent'; }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%' }}>{res.source_name}</span>
-                            <ArrowRight size={16} style={{ color: 'var(--accent-color)' }} />
+                          <a key={idx} href={cleanUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg)', padding: '12px 14px', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-primary)', transition: 'all 0.2s', border: '1px solid var(--glass-border)' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent-color)'; }} onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '85%', fontSize: '0.9rem' }}>{res.source_name}</span>
+                            <ArrowRight size={14} style={{ color: 'var(--accent-color)' }} />
                           </a>
                         );
                       })}
@@ -808,44 +846,6 @@ export default function Dashboard() {
                 )}
               </div>
             )}
-
-            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', marginBottom: '40px' }}>
-              <BookOpen size={48} style={{ color: 'var(--accent-color)', margin: '0 auto 24px auto' }} />
-              <h2 className="geist-pixel" style={{ fontSize: '1.8rem', marginBottom: '16px' }}>Ready to practice?</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px auto' }}>
-                Create a highly accurate, AI-generated mock test modeled after standard competitive exams.
-              </p>
-              <button className="btn btn-primary" onClick={() => setStep(1)} style={{ padding: '12px 32px', fontSize: '1.1rem', marginBottom: '16px' }}>
-                Start a New Mock Test <ArrowRight size={20} />
-              </button>
-              
-              <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '24px', marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
-                <h3 className="geist-pixel" style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>Live Test Sessions</h3>
-                {activeRooms.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No live test sessions right now.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '500px' }}>
-                    {activeRooms.map(r => (
-                      <div key={r.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ textAlign: 'left' }}>
-                          <div style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>{r.hostName}'s Room</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.examName} • {r.playersCount} Players</div>
-                        </div>
-                        <button className="btn btn-primary" onClick={() => handleJoinRoom(r.code)}>
-                          {r.state === 'LOBBY' ? `Join (${r.code})` : r.state === 'PLAYING' ? `Rejoin (${r.code})` : 'View Results'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                  <input type="text" className="input-field" placeholder="Or enter 6-digit code..." value={joinCode} onChange={e => setJoinCode(e.target.value)} style={{ width: '220px' }} />
-                  <button className="btn btn-glass" onClick={() => handleJoinRoom()}>Join Private</button>
-                </div>
-                {error && step === 0 && <p style={{ color: 'var(--danger-color)', fontSize: '0.9rem' }}>{error}</p>}
-              </div>
-            </div>
 
             {/* Saved Tests (Resume) Section */}
             {savedTests.length > 0 && (
