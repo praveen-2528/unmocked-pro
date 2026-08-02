@@ -52,8 +52,8 @@ async function fetchUnreadEmails() {
     try {
         let lock = await client.getMailboxLock('INBOX');
         try {
-            console.log('[EmailSync] Checking for unread emails...');
-            for await (let message of client.fetch({ unseen: true }, { source: true, uid: true })) {
+            console.log('[EmailSync] Checking for unread emails from praveenbhukya9522@gmail.com...');
+            for await (let message of client.fetch({ unseen: true, from: 'praveenbhukya9522@gmail.com' }, { source: true, uid: true })) {
                 await processMessage(message);
                 await client.messageFlagsAdd({ uid: message.uid }, ['\\Seen']);
             }
