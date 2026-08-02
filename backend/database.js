@@ -265,9 +265,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
     db.run(`
       CREATE TABLE IF NOT EXISTS daily_updates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT UNIQUE NOT NULL,
+        date TEXT NOT NULL,
+        exam_name TEXT NOT NULL,
         content TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(date, exam_name)
       )
     `);
   }

@@ -44,10 +44,32 @@ const io = new Server(server, {
 
 // Daily Updates Endpoint
 app.get('/api/daily-updates', (req, res) => {
-  db.get('SELECT * FROM daily_updates ORDER BY date DESC LIMIT 1', (err, row) => {
+  const { date } = req.query;
+  
+  if (date) {
+    db.all('SELECT * FROM daily_updates WHERE date = ?', [date], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json(rows || []);
+    });
+  } else {
+    // If no date provided, get the most recent date available, then fetch all updates for that date
+    db.get('SELECT date FROM daily_updates ORDER BY date DESC LIMIT 1', (err, row) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (!row) return res.json([]);
+      
+      db.all('SELECT * FROM daily_updates WHERE date = ?', [row.date], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json(rows || []);
+      });
+    });
+  }
+});
+
+// Endpoint to get available dates for the Date Navigator
+app.get('/api/daily-updates/dates', (req, res) => {
+  db.all('SELECT DISTINCT date FROM daily_updates ORDER BY date DESC', (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
-    if (!row) return res.json(null);
-    res.json(row);
+    res.json(rows.map(r => r.date));
   });
 });
 

@@ -33,15 +33,16 @@ async function processMessage(msg) {
         
         if (jsonMatch) {
             try {
-                const data = JSON.parse(jsonMatch[0]);
-                if (data.date && data.main_topic) {
-                    console.log(`[EmailSync] Found valid daily update for ${data.date}`);
+                const jsonStr = jsonMatch[0];
+                const data = JSON.parse(jsonStr);
+                if (data.date && data.main_topic && data.exam_name) {
+                    console.log(`[EmailSync] Found valid daily update for ${data.date} - ${data.exam_name}`);
                     
                     db.run(`
-                        INSERT INTO daily_updates (date, content)
-                        VALUES (?, ?)
-                        ON CONFLICT(date) DO UPDATE SET content = excluded.content, created_at = CURRENT_TIMESTAMP
-                    `, [data.date, JSON.stringify(data)], (err) => {
+                        INSERT INTO daily_updates (date, exam_name, content)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(date, exam_name) DO UPDATE SET content = excluded.content, created_at = CURRENT_TIMESTAMP
+                    `, [data.date, data.exam_name, JSON.stringify(data)], (err) => {
                         if (err) console.error('[EmailSync] DB Error:', err.message);
                         else console.log('[EmailSync] Successfully saved daily update.');
                     });
