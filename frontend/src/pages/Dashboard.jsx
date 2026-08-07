@@ -13,6 +13,9 @@ export default function Dashboard() {
   const [pastTests, setPastTests] = useState([]);
   const [savedTests, setSavedTests] = useState([]);
   const [studyRooms, setStudyRooms] = useState([]);
+  const [todos, setTodos] = useState([]);
+  const [newTodoTitle, setNewTodoTitle] = useState('');
+  const [newTodoTag, setNewTodoTag] = useState('');
   const [dailyUpdates, setDailyUpdates] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
   const [currentDate, setCurrentDate] = useState('');
@@ -86,6 +89,11 @@ export default function Dashboard() {
           .then(data => setSavedTests(Array.isArray(data) ? data : []))
           .catch(err => console.error(err));
           
+        fetch(`/api/todos/${currentUser.id}`)
+          .then(res => res.json())
+          .then(data => setTodos(Array.isArray(data) ? data : []))
+          .catch(err => console.error(err));
+
         if (step === 0) {
           fetch('/api/active-rooms')
             .then(res => res.json())
@@ -618,6 +626,42 @@ export default function Dashboard() {
     }
   };
 
+  const handleAddTodo = () => {
+    if (!newTodoTitle.trim()) return;
+    fetch('/api/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id, title: newTodoTitle, tag: newTodoTag })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.id) {
+          setTodos([data, ...todos]);
+          setNewTodoTitle('');
+          setNewTodoTag('');
+        }
+      })
+      .catch(console.error);
+  };
+
+  const handleToggleTodo = (id, currentStatus) => {
+    fetch(`/api/todos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_completed: !currentStatus })
+    }).then(() => {
+      setTodos(todos.map(t => t.id === id ? { ...t, is_completed: !currentStatus } : t));
+    }).catch(console.error);
+  };
+
+  const handleDeleteTodo = (id) => {
+    fetch(`/api/todos/${id}`, { method: 'DELETE' })
+      .then(() => {
+        setTodos(todos.filter(t => t.id !== id));
+      })
+      .catch(console.error);
+  };
+
   const handleStartMultiplayer = () => {
     if (lobbyData && lobbyData.code) {
       socket.emit('startGame', { code: lobbyData.code });
@@ -920,6 +964,72 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+
+            {/* Study To-Do List Section */}
+            <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '16px' }}>
+                <h2 className="geist-pixel" style={{ fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                  <CheckCircle2 size={24} style={{ color: 'var(--success-color)' }} /> Study To-Do List
+                </h2>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{todos.filter(t => t.is_completed).length} / {todos.length} Completed</span>
+              </div>
+
+              {/* Add New Todo Form */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="What do you need to study?" 
+                  value={newTodoTitle} 
+                  onChange={e => setNewTodoTitle(e.target.value)} 
+                  onKeyDown={e => e.key === 'Enter' && handleAddTodo()}
+                  style={{ flex: 1, padding: '10px 16px', fontSize: '0.95rem' }} 
+                />
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Tag (e.g. Exam/Subject)" 
+                  value={newTodoTag} 
+                  onChange={e => setNewTodoTag(e.target.value)} 
+                  onKeyDown={e => e.key === 'Enter' && handleAddTodo()}
+                  style={{ width: '180px', padding: '10px 16px', fontSize: '0.95rem' }} 
+                />
+                <button className="btn btn-primary" onClick={handleAddTodo} style={{ padding: '0 20px', borderRadius: '8px' }}>Add</button>
+              </div>
+
+              {/* Todo List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {todos.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Your study list is empty. Add a topic above!</div>
+                ) : (
+                  todos.map(todo => (
+                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--glass-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)', transition: 'all 0.2s', opacity: todo.is_completed ? 0.7 : 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                        <div 
+                          onClick={() => handleToggleTodo(todo.id, todo.is_completed)}
+                          style={{ width: '20px', height: '20px', borderRadius: '4px', border: `2px solid ${todo.is_completed ? 'var(--success-color)' : 'var(--text-secondary)'}`, background: todo.is_completed ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                          {todo.is_completed && <Check size={14} color="#fff" />}
+                        </div>
+                        <span style={{ fontSize: '1rem', color: 'var(--text-primary)', textDecoration: todo.is_completed ? 'line-through' : 'none', cursor: 'pointer' }} onClick={() => handleToggleTodo(todo.id, todo.is_completed)}>
+                          {todo.title}
+                        </span>
+                        {todo.tag && (
+                          <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)' }}>{todo.tag}</span>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteTodo(todo.id)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', opacity: 0.7 }}
+                        title="Delete task"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
             {/* Saved Tests (Resume) Section */}
             {savedTests.length > 0 && (

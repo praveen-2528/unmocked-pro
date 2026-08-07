@@ -73,6 +73,40 @@ app.get('/api/daily-updates/dates', (req, res) => {
   });
 });
 
+// Todos Endpoints
+app.get('/api/todos/:userId', (req, res) => {
+  db.all('SELECT * FROM todos WHERE user_id = ? ORDER BY is_completed ASC, created_at DESC', [req.params.userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows || []);
+  });
+});
+
+app.post('/api/todos', express.json(), (req, res) => {
+  const { user_id, title, tag } = req.body;
+  if (!user_id || !title) return res.status(400).json({ error: 'user_id and title are required' });
+  db.run('INSERT INTO todos (user_id, title, tag) VALUES (?, ?, ?)', [user_id, title, tag || null], function(err) {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    db.get('SELECT * FROM todos WHERE id = ?', [this.lastID], (err, row) => {
+      res.json(row);
+    });
+  });
+});
+
+app.put('/api/todos/:id', express.json(), (req, res) => {
+  const { is_completed } = req.body;
+  db.run('UPDATE todos SET is_completed = ? WHERE id = ?', [is_completed ? 1 : 0, req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ success: true });
+  });
+});
+
+app.delete('/api/todos/:id', (req, res) => {
+  db.run('DELETE FROM todos WHERE id = ?', [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ success: true });
+  });
+});
+
 // Profile Upload Endpoint
 app.post('/api/profile/upload', upload.single('profile_pic'), (req, res) => {
   const userId = req.body.userId;
