@@ -106,8 +106,8 @@ export default function RainBackground() {
       }
     }
 
-    // Initialize 700 raindrops for an intense shower
-    for (let i = 0; i < 700; i++) {
+    // Initialize 300 raindrops for a balanced, performant shower
+    for (let i = 0; i < 300; i++) {
       raindrops.push(new Raindrop());
     }
 
