@@ -98,6 +98,13 @@ export default function Navbar() {
       {currentUser?.name && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           
+          <button 
+            onClick={() => navigate('/chess')}
+            className="btn btn-glass"
+            style={{ padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            ♟️ Play Chess
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>
             {currentUser.name}

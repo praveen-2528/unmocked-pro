@@ -16,8 +16,6 @@ export default function FriendsPanel() {
   } = useChatStore();
 
   const [friends, setFriends] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
   const [activeChatFriend, setActiveChatFriend] = useState(null);
   const [onlineStatus, setOnlineStatus] = useState({});
   const [matchChatInput, setMatchChatInput] = useState('');
@@ -97,55 +95,13 @@ export default function FriendsPanel() {
       const res = await fetch(`/api/friends/${currentUser.id}`);
       const data = await res.json();
       setFriends(data);
-      const pending = data.filter(f => f.status === 'pending' && f.user_id_1 !== currentUser.id).length;
-      setPendingFriendRequests(pending);
+      setPendingFriendRequests(0); // No more pending requests
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    try {
-      const res = await fetch('/api/users/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery, currentUserId: currentUser.id })
-      });
-      const data = await res.json();
-      setSearchResults(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
-  const sendFriendRequest = async (receiverId) => {
-    try {
-      const res = await fetch('/api/friends/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderId: currentUser.id, receiverId })
-      });
-      if (res.ok) alert('Request sent!');
-      fetchFriends();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleRequest = async (friendId, action) => {
-    try {
-      await fetch('/api/friends/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderId: friendId, receiverId: currentUser.id, action })
-      });
-      fetchFriends();
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleSendMatchMessage = (e) => {
     e.preventDefault();
@@ -190,8 +146,7 @@ export default function FriendsPanel() {
     }
   };
 
-  const pendingRequests = friends.filter(f => f.status === 'pending' && f.user_id_1 !== currentUser.id);
-  const myFriends = friends.filter(f => f.status === 'accepted');
+  const myFriends = friends; // All users are shown as friends directly
 
   return (
     <>
@@ -249,21 +204,10 @@ export default function FriendsPanel() {
             onClick={() => setActiveTab('friends')}
             style={{ flex: 1, padding: '12px', background: 'transparent', border: 'none', color: activeTab === 'friends' ? 'var(--accent-color)' : 'var(--text-secondary)', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'friends' ? '2px solid var(--accent-color)' : 'none', position: 'relative' }}
           >
-            Friends
+            Users
             {unreadFriendCount > 0 && activeTab !== 'friends' && (
               <span style={{ position: 'absolute', top: '8px', right: '16px', background: '#ef4444', color: 'white', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {unreadFriendCount}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveTab('add')}
-            style={{ flex: 1, padding: '12px', background: 'transparent', border: 'none', color: activeTab === 'add' ? 'var(--accent-color)' : 'var(--text-secondary)', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'add' ? '2px solid var(--accent-color)' : 'none', position: 'relative' }}
-          >
-            Add
-            {pendingRequests.length > 0 && (
-              <span style={{ position: 'absolute', top: '8px', right: '16px', background: '#ef4444', color: 'white', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {pendingRequests.length}
               </span>
             )}
           </button>
@@ -368,58 +312,6 @@ export default function FriendsPanel() {
                   </div>
                 ))
               )}
-            </div>
-          )}
-
-          {/* Add Friend Tab */}
-          {activeTab === 'add' && (
-            <div style={{ padding: '20px' }}>
-              {pendingRequests.length > 0 && (
-                <div style={{ marginBottom: '24px' }}>
-                  <h3 style={{ color: 'var(--text-primary)', fontSize: '1rem', marginBottom: '12px' }}>Pending Requests</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {pendingRequests.map(req => (
-                      <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                        <span style={{ color: 'var(--text-primary)' }}>{req.name}</span>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => handleRequest(req.id, 'accept')} style={{ background: '#22c55e', color: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}><Check size={16} /></button>
-                          <button onClick={() => handleRequest(req.id, 'reject')} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer' }}><XCircle size={16} /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-                <input 
-                  type="text" 
-                  placeholder="Search by name or email" 
-                  className="input-field" 
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{ padding: '8px 12px' }}
-                />
-                <button type="submit" className="btn btn-primary" style={{ padding: '8px 12px' }}><Search size={16} /></button>
-              </form>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {searchResults.map(user => {
-                  const isFriend = friends.some(f => f.id === user.id);
-                  return (
-                    <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                      <span style={{ color: 'var(--text-primary)' }}>{user.name}</span>
-                      {!isFriend ? (
-                        <button onClick={() => sendFriendRequest(user.id)} style={{ background: 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <UserPlus size={14} /> Add
-                        </button>
-                      ) : (
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Added</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
         </div>

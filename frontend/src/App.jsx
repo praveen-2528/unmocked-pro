@@ -16,6 +16,8 @@ import StudyRoom from './pages/StudyRoom';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
 import Settings from './pages/Settings';
+import ChessLobby from './pages/ChessLobby';
+import ChessRoom from './pages/ChessRoom';
 
 function App() {
   const location = useLocation();
@@ -51,6 +53,8 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/home" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/chess" element={<ChessLobby />} />
+      <Route path="/chess/:roomId" element={<ChessRoom />} />
       <Route path="/test/:sessionId" element={<TestEngine />} />
       <Route path="/test" element={<TestEngine />} />
       <Route path="/review/:resultId" element={<TestEngine />} />

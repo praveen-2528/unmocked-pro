@@ -1269,12 +1269,11 @@ app.post('/api/friends/accept', (req, res) => {
 app.get('/api/friends/:userId', (req, res) => {
   const { userId } = req.params;
   const query = `
-    SELECT f.status, f.user_id_1, f.user_id_2, u.id, u.name, u.email, u.profile_pic 
-    FROM friends f
-    JOIN users u ON (u.id = f.user_id_1 OR u.id = f.user_id_2)
-    WHERE (f.user_id_1 = ? OR f.user_id_2 = ?) AND u.id != ?
+    SELECT id, name, email, profile_pic, 'accepted' as status 
+    FROM users 
+    WHERE id != ?
   `;
-  db.all(query, [userId, userId, userId], (err, rows) => {
+  db.all(query, [userId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -1313,6 +1312,7 @@ app.post('/api/users/search', (req, res) => {
 
 const onlineUsers = new Map(); // Map user_id -> socket.id
 const rooms = {}; // Multiplayer rooms
+const chessRooms = {}; // Chess rooms
 
 const generateRoomCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -1358,6 +1358,34 @@ io.on('connection', (socket) => {
       io.to(receiverSocketId).emit('userTyping', { senderId, isTyping });
     }
   });
+
+  // --- Chess Multiplayer Logic ---
+  socket.on('joinChessRoom', ({ roomId, user }) => {
+    socket.join(roomId);
+    if (!chessRooms[roomId]) {
+      chessRooms[roomId] = { white: user, black: null, status: 'LOBBY' };
+    } else if (!chessRooms[roomId].black && chessRooms[roomId].white.id !== user.id) {
+      chessRooms[roomId].black = user;
+    }
+    // Broadcast state to everyone in the room
+    io.to(roomId).emit('chessRoomState', chessRooms[roomId]);
+  });
+
+  socket.on('startChessMatch', ({ roomId }) => {
+    if (chessRooms[roomId]) {
+      chessRooms[roomId].status = 'PLAYING';
+      io.to(roomId).emit('chessRoomState', chessRooms[roomId]);
+    }
+  });
+
+  socket.on('chessMove', ({ roomId, move, fen, pgn }) => {
+    socket.to(roomId).emit('chessMove', { move, fen, pgn });
+  });
+
+  socket.on('chessReset', ({ roomId }) => {
+    socket.to(roomId).emit('chessReset');
+  });
+  // -------------------------------
 
   socket.on('createRoom', ({ user, testData, mode }) => {
     const code = generateRoomCode();
@@ -1407,6 +1435,8 @@ io.on('connection', (socket) => {
     }
     
     if (rooms[code].state === 'LOBBY') {
+      socket.emit('roomJoined', rooms[code]);
+      io.to(code).emit('lobbyUpdated', rooms[code]);
       io.to(code).emit('roomUpdated', rooms[code]);
     } else {
       socket.emit('gameStarted', rooms[code]);
