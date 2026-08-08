@@ -3,9 +3,16 @@ import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
-import Navbar from '../components/Navbar';
 import GlobalRoomReviews from '../components/GlobalRoomReviews';
 import useAuthStore from '../store/useAuthStore';
+import Tilt from 'react-parallax-tilt';
+import { motion } from 'framer-motion';
+
+const TiltWrapper = ({ children }) => (
+  <Tilt tiltMaxAngleX={2} tiltMaxAngleY={2} glareEnable={true} glareMaxOpacity={0.1} glarePosition="all" scale={1.01} transitionSpeed={1500} tiltReverse={true}>
+    {children}
+  </Tilt>
+);
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -772,9 +779,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
-      <Navbar />
-      <main style={{ padding: '80px 20px 60px' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      <motion.div 
+        initial={{ opacity: 0, y: 20, scale: 0.98 }} 
+        animate={{ opacity: 1, y: 0, scale: 1 }} 
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        style={{ position: 'relative', zIndex: 10, minHeight: '100vh' }}
+      >
+      <main style={{ padding: '80px 20px 60px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* Header */}
@@ -854,6 +866,7 @@ export default function Dashboard() {
             </div>
 
             {dailyUpdates.length > 0 && (
+              <TiltWrapper>
               <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '16px' }}>
                   <h2 className="geist-pixel" style={{ fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
@@ -963,9 +976,11 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+              </TiltWrapper>
             )}
 
             {/* Study To-Do List Section */}
+            <TiltWrapper>
             <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '16px' }}>
                 <h2 className="geist-pixel" style={{ fontSize: '1.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
@@ -1030,9 +1045,11 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+            </TiltWrapper>
 
             {/* Saved Tests (Resume) Section */}
             {savedTests.length > 0 && (
+              <TiltWrapper>
               <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', borderLeft: '4px solid #f59e0b' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h2 className="geist-pixel" style={{ fontSize: '1.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1082,6 +1099,7 @@ export default function Dashboard() {
                   })}
                 </div>
               </div>
+              </TiltWrapper>
             )}
 
             {/* Study Rooms Section */}
@@ -1651,6 +1669,7 @@ export default function Dashboard() {
 
         </div>
       </main>
+    </motion.div>
     </div>
   );
 }

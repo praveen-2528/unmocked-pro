@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Navbar from '../components/Navbar';
 import { Save, Lock, LogOut, Mail, Calendar, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
@@ -74,9 +73,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
-      <Navbar />
-
+    <div className="animate-fade-in" style={{ minHeight: '100vh' }}>
       <main style={{ maxWidth: '700px', margin: '80px auto 60px', padding: '0 20px' }}>
         <h1 className="geist-pixel" style={{ color: 'var(--text-primary)', marginBottom: '40px' }}>
           Account Settings

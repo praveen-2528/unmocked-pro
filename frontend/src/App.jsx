@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import RainBackground from './components/RainBackground';
+import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -11,8 +13,16 @@ import Leaderboard from './pages/Leaderboard';
 import Settings from './pages/Settings';
 
 function App() {
+  const location = useLocation();
+  const isTestUI = location.pathname.startsWith('/test') || location.pathname.startsWith('/review');
+  const isAuth = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/reset-password';
+  const showGlobalUI = !isTestUI && !isAuth;
+
   return (
-    <Routes>
+    <>
+      {!isTestUI && <RainBackground />}
+      {showGlobalUI && <Navbar />}
+      <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
@@ -28,6 +38,7 @@ function App() {
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/settings" element={<Settings />} />
     </Routes>
+    </>
   );
 }
 
