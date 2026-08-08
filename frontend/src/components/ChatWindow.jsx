@@ -180,7 +180,7 @@ export default function ChatWindow({ friend, onClose, currentUser }) {
                     ) : msg.file_type?.startsWith('video/') ? (
                       <video src={msg.file_url} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />
                     ) : (
-                      <a href={msg.file_url} download style={{ display: 'block', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '8px', color: 'inherit', textDecoration: 'none', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <a href={msg.file_url} download style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '8px', color: 'inherit', textDecoration: 'none', fontSize: '0.8rem' }}>
                         <Paperclip size={14} /> {msg.file_name || 'Download Attachment'}
                       </a>
                     )}
