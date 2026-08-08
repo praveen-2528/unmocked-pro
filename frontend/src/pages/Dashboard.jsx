@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
 import GlobalRoomReviews from '../components/GlobalRoomReviews';
 import useAuthStore from '../store/useAuthStore';
+import useChatStore from '../store/useChatStore';
 import Tilt from 'react-parallax-tilt';
 import { motion } from 'framer-motion';
 
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState('');
   const [selectedExamTab, setSelectedExamTab] = useState('');
   
+  const { setActiveRoomCode, clearLobbyMessages } = useChatStore();
+
   // Wizard State
   const [searchParams, setSearchParams] = useSearchParams();
   const step = parseInt(searchParams.get('step') || '0', 10); // 0 = Home, 1 = Blueprint, 2 = Mode, 3 = Generate & Input, 4 = Ready
@@ -52,17 +55,6 @@ export default function Dashboard() {
   const [friendlyMode, setFriendlyMode] = useState('Real'); // 'Real', 'Friendly'
   const [joinCode, setJoinCode] = useState('');
   const [lobbyData, setLobbyData] = useState(null);
-
-  // Chat State
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [showChat, setShowChat] = useState(false);
-  const [unreadChat, setUnreadChat] = useState(false);
-  const [latestMessage, setLatestMessage] = useState(null);
-  
-  const showChatRef = useRef(false);
-  const latestMessageTimerRef = useRef(null);
-  const messagesEndRef = useRef(null);
   const [activeRooms, setActiveRooms] = useState([]);
   const [editingNameId, setEditingNameId] = useState(null);
   const [editingNameValue, setEditingNameValue] = useState('');
@@ -72,7 +64,6 @@ export default function Dashboard() {
   const [newRoomDesc, setNewRoomDesc] = useState('');
   const [joinRoomCode, setJoinRoomCode] = useState('');
   
-  // Public Tunnel State removed
   const currentUser = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
 
   useEffect(() => {
@@ -110,27 +101,32 @@ export default function Dashboard() {
       }
     }
 
-    socket.on('roomUpdated', (room) => {
-      setLobbyData(room);
+    socket.on('roomCreated', (data) => {
+      setLobbyData(data);
+      setActiveRoomCode(data.code);
+      clearLobbyMessages();
       setStep(5);
     });
     
-    socket.on('chatMessage', (msg) => {
-      setChatMessages(prev => [...prev, msg]);
-      if (!showChatRef.current) {
-        setUnreadChat(true);
-        setLatestMessage(msg);
-        if (latestMessageTimerRef.current) {
-          clearTimeout(latestMessageTimerRef.current);
-        }
-        latestMessageTimerRef.current = setTimeout(() => {
-          setLatestMessage(null);
-        }, 4000);
-      }
+    socket.on('roomJoined', (data) => {
+      setLobbyData(data);
+      setActiveRoomCode(data.code);
+      clearLobbyMessages();
+      setStep(5);
     });
-    socket.on('roomError', (err) => {
-      setError(err);
+
+    socket.on('lobbyUpdated', (data) => {
+      setLobbyData(data);
     });
+
+    socket.on('roomClosed', () => {
+      setLobbyData(null);
+      setActiveRoomCode(null);
+      clearLobbyMessages();
+      setStep(0);
+      alert('The host has closed the room.');
+    });
+
     socket.on('gameStarted', (room) => {
       localStorage.setItem('active_test_data', JSON.stringify(room.testData));
       localStorage.setItem('multiplayer_room', JSON.stringify(room));
@@ -139,35 +135,22 @@ export default function Dashboard() {
       navigate('/test/' + sessionId + '?view=instructions');
     });
     
-    socket.on('roomClosed', () => {
-      alert('The host has closed the room.');
-      setLobbyData(null);
-      setStep(0);
+    socket.on('roomError', (err) => {
+      setError(err);
     });
     
     return () => {
-      socket.off('roomUpdated');
-      socket.off('chatMessage');
-      socket.off('roomError');
-      socket.off('gameStarted');
+      socket.off('roomCreated');
+      socket.off('roomJoined');
+      socket.off('lobbyUpdated');
       socket.off('roomClosed');
+      socket.off('gameStarted');
+      socket.off('roomError');
     }
   }, []);
 
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, showChat]);
-
-  useEffect(() => {
-    showChatRef.current = showChat;
-    if (showChat) setUnreadChat(false);
-  }, [chatMessages, showChat]);
-
   // Safety check: if user refreshes on a later step without an active blueprint, bump them to step 1
   useEffect(() => {
-    // Exclude step 5 (Lobby) from this check, as joining a room doesn't require a selectedBp
     if (step > 1 && step < 5 && !selectedBp) {
       setSearchParams({ step: '1' });
     }
@@ -321,11 +304,9 @@ export default function Dashboard() {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(textToCopy);
     } else {
-      // Fallback for non-secure contexts (e.g. IP address instead of localhost)
       const textArea = document.createElement("textarea");
       textArea.value = textToCopy;
       
-      // Move out of screen to avoid scrolling
       textArea.style.position = "absolute";
       textArea.style.left = "-999999px";
       
@@ -346,7 +327,6 @@ export default function Dashboard() {
   const parseRawCsv = (csvString, expectedCols) => {
     if (!csvString.trim()) return [];
     let rawRows = csvString.split('###').map(r => r.trim()).filter(r => r.length > 0);
-    // Strip header
     if (rawRows[0].includes('Question_Text|') || rawRows[0].includes('Row_Type|')) {
       rawRows = rawRows.slice(1);
     }
@@ -366,10 +346,9 @@ export default function Dashboard() {
          if (pId && pText) {
              currentPassages[pId] = pText;
          }
-         return; // Don't add a question for P row
+         return; 
       }
       
-      // DI Chart data row — stores chart JSON, similar to P row
       if (rowType === 'D') {
          const dId = cols[1]?.trim();
          const dJson = cols.slice(2).join('|').trim();
@@ -384,7 +363,6 @@ export default function Dashboard() {
       }
       
       if (rowType === 'DQ' || rowType === 'PQ' || rowType === 'Q') {
-          // New format
           const pId = cols[1]?.trim();
           const text = cols[2]?.trim();
           const answer = cols[cols.length - 2]?.trim();
@@ -399,13 +377,11 @@ export default function Dashboard() {
              explanation: explanation,
              passage: rowType === 'PQ' ? (currentPassages[pId] || pId) : null
           };
-          // Attach chart data for DQ rows
           if (rowType === 'DQ' && pId && currentChartData[pId]) {
              qObj.chartData = currentChartData[pId];
           }
           parsedQs.push(qObj);
       } else {
-          // Old format compatibility
           if (cols.length < expectedCols) throw new Error(`Row ${i+1} is missing pipes. Found ${cols.length} columns. Data: ${row.substring(0, 50)}...`);
           
           let text = cols[0].trim();
@@ -484,7 +460,6 @@ export default function Dashboard() {
           totalParsed += parsedQs.length;
         }
       } else {
-        // Sectional or Topic
         const rawData = sectionData[targetSubject] || '';
         if (!rawData) throw new Error(`Please provide data for ${targetSubject}`);
         
@@ -535,14 +510,12 @@ export default function Dashboard() {
       return;
     }
     
-    // Update local storage
     const user = JSON.parse(localStorage.getItem('unmocked_user') || '{}');
     if (user.id === id) {
       user.name = editingNameValue.trim();
       localStorage.setItem('unmocked_user', JSON.stringify(user));
     }
     
-    // Emit socket event to update on server
     socket.emit('updateName', { code: lobbyData.code, userId: id, newName: editingNameValue.trim() });
     
     setEditingNameId(null);
@@ -551,6 +524,8 @@ export default function Dashboard() {
   const handleLeaveRoom = () => {
     socket.emit('leaveRoom', { code: lobbyData.code, userId: currentUser.id });
     setLobbyData(null);
+    setActiveRoomCode(null);
+    clearLobbyMessages();
     setStep(0);
   };
 
@@ -605,9 +580,8 @@ export default function Dashboard() {
   };
 
   const handleLaunchOrHost = () => {
-    const finalMode = `${playMode}-${friendlyMode}`; // 'Solo-Real', 'Solo-Friendly', 'Multiplayer-Real', 'Multiplayer-Friendly'
+    const finalMode = `${playMode}-${friendlyMode}`; 
     
-    // Apply the user-edited duration to the test data
     let finalTest = parsedTest;
     if (friendlyMode === 'Real' && testMode === 'Topic') {
       finalTest = {
@@ -626,10 +600,6 @@ export default function Dashboard() {
       navigate('/test/' + sessionId + '?view=instructions');
     } else {
       socket.emit('createRoom', { user: currentUser, testData: finalTest, mode: finalMode });
-      socket.once('roomCreated', (room) => {
-        setLobbyData(room);
-        setStep(5);
-      });
     }
   };
 
@@ -789,7 +759,6 @@ export default function Dashboard() {
       <main style={{ padding: '80px 20px 60px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }} className="animate-fade-in">
           <div>
             <h1 className="geist-pixel" style={{ fontSize: '2rem', marginBottom: '8px', color: 'var(--accent-color)' }}>
@@ -818,12 +787,10 @@ export default function Dashboard() {
 
         {renderWizardTracker()}
 
-        {/* Step 7: Global Room Reviews */}
         {step === 7 && (
           <GlobalRoomReviews currentUser={currentUser} onBack={() => setStep(0)} />
         )}
 
-        {/* Step 0: Home */}
         {step === 0 && (
           <div className="animate-fade-in">
 
@@ -979,7 +946,6 @@ export default function Dashboard() {
               </TiltWrapper>
             )}
 
-            {/* Study To-Do List Section */}
             <TiltWrapper>
             <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '16px' }}>
@@ -989,7 +955,6 @@ export default function Dashboard() {
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{todos.filter(t => t.is_completed).length} / {todos.length} Completed</span>
               </div>
 
-              {/* Add New Todo Form */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
                 <input 
                   type="text" 
@@ -1012,7 +977,6 @@ export default function Dashboard() {
                 <button className="btn btn-primary" onClick={handleAddTodo} style={{ padding: '0 20px', borderRadius: '8px' }}>Add</button>
               </div>
 
-              {/* Todo List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {todos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Your study list is empty. Add a topic above!</div>
@@ -1047,7 +1011,6 @@ export default function Dashboard() {
             </div>
             </TiltWrapper>
 
-            {/* Saved Tests (Resume) Section */}
             {savedTests.length > 0 && (
               <TiltWrapper>
               <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px', borderLeft: '4px solid #f59e0b' }}>
@@ -1102,7 +1065,6 @@ export default function Dashboard() {
               </TiltWrapper>
             )}
 
-            {/* Study Rooms Section */}
             <div className="glass-panel" style={{ padding: '32px', marginBottom: '40px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h2 className="geist-pixel" style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>My Study Rooms</h2>
@@ -1129,7 +1091,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Analytics placeholders */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div className="glass-panel" style={{ padding: '24px' }}>
                 <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '12px' }}>Recent Tests</h3>
@@ -1189,7 +1150,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Step 1: Select Exam */}
         {step === 1 && (
           <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -1210,7 +1170,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Step 2: Select Mode */}
         {step === 2 && (
           <div className="animate-fade-in glass-panel" style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -1336,7 +1295,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Step 3: Generate & Input */}
         {step === 3 && (
           <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -1368,7 +1326,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Step 4: Ready to Launch */}
         {step === 4 && parsedTest && (
           <div className="animate-fade-in">
             <div className="glass-panel" style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
@@ -1446,7 +1403,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Step 5: Lobby Waiting Room */}
         {step === 5 && lobbyData && (
           <div className="animate-fade-in">
             <div className="glass-panel" style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
@@ -1467,7 +1423,6 @@ export default function Dashboard() {
               <div style={{ textAlign: 'left', marginBottom: '40px' }}>
                 <h3 className="geist-pixel" style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Players in Lobby ({1 + lobbyData.guests.length})</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
-                  {/* Host Card */}
                   <div className="glass-card" style={{ padding: '16px', borderColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {lobbyData.host.profile_pic ? (
                       <img src={lobbyData.host.profile_pic} alt="Host Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -1493,7 +1448,6 @@ export default function Dashboard() {
                       <span style={{ fontSize: '0.8rem', color: 'var(--accent-color)', display: 'block' }}>Host</span>
                     </div>
                   </div>
-                  {/* Guests Cards */}
                   {lobbyData.guests.map((g, i) => (
                     <div key={i} className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {g.profile_pic ? (
@@ -1548,83 +1502,6 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-
-            {/* Floating Chat Bubble for Lobby */}
-            <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              {showChat && (
-                <div className="animate-fade-in" style={{ width: '320px', height: '400px', background: 'var(--bg-main)', backdropFilter: 'blur(20px)', border: '1px solid var(--border-color)', borderRadius: '12px', marginBottom: '16px', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 16px', background: 'var(--c-secondary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-                      <MessageCircle size={18} /> Lobby Chat
-                    </div>
-                    <XCircle size={18} style={{ cursor: 'pointer', color: '#fff' }} onClick={() => setShowChat(false)} />
-                  </div>
-                  <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-alt)' }}>
-                    {chatMessages.map((msg, idx) => {
-                      const isMe = msg.user.id === currentUser.id;
-                      return (
-                        <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                          {!isMe && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', marginLeft: '4px' }}>{msg.user.name}</div>}
-                          <div style={{ background: isMe ? 'var(--status-answered)' : '#fff', color: isMe ? '#fff' : 'var(--text-dark)', border: isMe ? 'none' : '1px solid var(--border-color)', padding: '8px 12px', borderRadius: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0', fontSize: '0.9rem', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-                            {msg.text}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  <div style={{ padding: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '8px', background: '#fff' }}>
-                    <input 
-                      type="text" 
-                      className="input-field" 
-                      style={{ padding: '8px 12px', fontSize: '0.9rem', flex: 1, borderRadius: '20px', border: '1px solid var(--border-color)', color: 'var(--text-dark)', background: 'var(--bg-alt)' }} 
-                      placeholder="Message..." 
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && chatInput.trim()) {
-                          socket.emit('chatMessage', { code: lobbyData.code, user: currentUser, text: chatInput.trim() });
-                          setChatInput('');
-                        }
-                      }}
-                    />
-                    <button 
-                      style={{ background: 'var(--status-answered)', border: 'none', color: '#fff', padding: '8px', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      onClick={() => {
-                        if (chatInput.trim()) {
-                          socket.emit('chatMessage', { code: lobbyData.code, user: currentUser, text: chatInput.trim() });
-                          setChatInput('');
-                        }
-                      }}
-                    ><Send size={16}/></button>
-                  </div>
-                </div>
-              )}
-              {!showChat && (
-                <div style={{ position: 'relative' }}>
-                  {latestMessage && (
-                    <div className="animate-fade-in" style={{ position: 'absolute', bottom: '70px', right: '0px', width: '250px', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', color: 'var(--text-dark)' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--c-primary)', marginBottom: '4px' }}>{latestMessage.user.name}</div>
-                      <div style={{ fontSize: '0.9rem' }}>{latestMessage.text}</div>
-                    </div>
-                  )}
-                  <button 
-                    onClick={() => setShowChat(true)}
-                    style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--c-secondary)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', transition: 'transform 0.2s', position: 'relative' }}
-                    onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                    onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <MessageCircle size={28} />
-                    {unreadChat && (
-                      <span style={{ position: 'absolute', top: '0px', right: '0px', background: '#e74c3c', color: 'white', fontSize: '12px', fontWeight: 'bold', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
-                        !
-                      </span>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-            
           </div>
         )}
 

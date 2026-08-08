@@ -284,6 +284,47 @@ const db = new sqlite3.Database(dbPath, (err) => {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
+
+    // Friends and Messaging Migrations
+    db.run(`
+      CREATE TABLE IF NOT EXISTS friends (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id_1 INTEGER NOT NULL,
+        user_id_2 INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending', 
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id_1) REFERENCES users (id),
+        FOREIGN KEY (user_id_2) REFERENCES users (id),
+        UNIQUE(user_id_1, user_id_2)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS private_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        file_url TEXT,
+        file_name TEXT,
+        file_type TEXT,
+        is_read BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sender_id) REFERENCES users (id),
+        FOREIGN KEY (receiver_id) REFERENCES users (id)
+      )
+    `);
+
+    // Migration for file columns in private_messages
+    db.run("ALTER TABLE private_messages ADD COLUMN file_url TEXT", (err) => {
+      if (err && !err.message.includes("duplicate column name")) console.error("Migration error file_url:", err.message);
+    });
+    db.run("ALTER TABLE private_messages ADD COLUMN file_name TEXT", (err) => {
+      if (err && !err.message.includes("duplicate column name")) console.error("Migration error file_name:", err.message);
+    });
+    db.run("ALTER TABLE private_messages ADD COLUMN file_type TEXT", (err) => {
+      if (err && !err.message.includes("duplicate column name")) console.error("Migration error file_type:", err.message);
+    });
   }
 });
 

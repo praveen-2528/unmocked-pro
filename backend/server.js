@@ -1232,7 +1232,87 @@ app.post('/api/study-groups/:groupId/tests', (req, res) => {
   );
 });
 
-const rooms = {};
+// ==========================================
+// FRIENDS AND PRIVATE MESSAGING
+// ==========================================
+
+app.post('/api/friends/request', (req, res) => {
+  const { senderId, receiverId } = req.body;
+  
+  if (senderId === receiverId) return res.status(400).json({ error: 'Cannot send request to yourself' });
+
+  db.get('SELECT * FROM users WHERE id = ?', [receiverId], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User not found' });
+    
+    db.run('INSERT INTO friends (user_id_1, user_id_2, status) VALUES (?, ?, ?)', [senderId, receiverId, 'pending'], function(err) {
+      if (err) return res.status(400).json({ error: 'Request already sent or friends' });
+      res.json({ success: true, message: 'Friend request sent' });
+    });
+  });
+});
+
+app.post('/api/friends/accept', (req, res) => {
+  const { senderId, receiverId, action } = req.body; // action: 'accept' or 'reject'
+  if (action === 'accept') {
+    db.run('UPDATE friends SET status = ? WHERE user_id_1 = ? AND user_id_2 = ?', ['accepted', senderId, receiverId], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to accept' });
+      res.json({ success: true, message: 'Friend request accepted' });
+    });
+  } else {
+    db.run('DELETE FROM friends WHERE user_id_1 = ? AND user_id_2 = ?', [senderId, receiverId], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to reject' });
+      res.json({ success: true, message: 'Friend request rejected' });
+    });
+  }
+});
+
+app.get('/api/friends/:userId', (req, res) => {
+  const { userId } = req.params;
+  const query = `
+    SELECT f.status, f.user_id_1, f.user_id_2, u.id, u.name, u.email, u.profile_pic 
+    FROM friends f
+    JOIN users u ON (u.id = f.user_id_1 OR u.id = f.user_id_2)
+    WHERE (f.user_id_1 = ? OR f.user_id_2 = ?) AND u.id != ?
+  `;
+  db.all(query, [userId, userId, userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.get('/api/messages/:userId/:friendId', (req, res) => {
+  const { userId, friendId } = req.params;
+  db.all(
+    'SELECT * FROM private_messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY created_at ASC',
+    [userId, friendId, friendId, userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.post('/api/chat/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({
+    fileUrl,
+    fileName: req.file.originalname,
+    fileType: req.file.mimetype
+  });
+});
+
+app.post('/api/users/search', (req, res) => {
+  const { query, currentUserId } = req.body;
+  const q = `%${query}%`;
+  db.all('SELECT id, name, email, profile_pic FROM users WHERE (name LIKE ? OR email LIKE ?) AND id != ? LIMIT 10', [q, q, currentUserId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+const onlineUsers = new Map(); // Map user_id -> socket.id
+const rooms = {}; // Multiplayer rooms
 
 const generateRoomCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -1240,6 +1320,44 @@ const generateRoomCode = () => {
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  socket.on('authenticate', (userId) => {
+    onlineUsers.set(userId, socket.id);
+    io.emit('userStatusChanged', { userId, status: 'online' });
+  });
+
+  socket.on('privateMessage', ({ senderId, receiverId, message, fileUrl, fileName, fileType }) => {
+    db.run(
+      'INSERT INTO private_messages (sender_id, receiver_id, message, file_url, file_name, file_type) VALUES (?, ?, ?, ?, ?, ?)', 
+      [senderId, receiverId, message, fileUrl || null, fileName || null, fileType || null], 
+      function(err) {
+        if (!err) {
+          const msgObj = { 
+            id: this.lastID, 
+            sender_id: senderId, 
+            receiver_id: receiverId, 
+            message, 
+            file_url: fileUrl || null,
+            file_name: fileName || null,
+            file_type: fileType || null,
+            created_at: new Date().toISOString() 
+          };
+          const receiverSocketId = onlineUsers.get(receiverId);
+          if (receiverSocketId) {
+            io.to(receiverSocketId).emit('newPrivateMessage', msgObj);
+          }
+          socket.emit('newPrivateMessage', msgObj); // Echo back to sender
+        }
+      }
+    );
+  });
+
+  socket.on('typing', ({ senderId, receiverId, isTyping }) => {
+    const receiverSocketId = onlineUsers.get(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('userTyping', { senderId, isTyping });
+    }
+  });
 
   socket.on('createRoom', ({ user, testData, mode }) => {
     const code = generateRoomCode();
@@ -1470,9 +1588,9 @@ io.on('connection', (socket) => {
     io.to(code).emit('friendlyReveal', room.answersSubmitted);
   });
 
-  socket.on('chatMessage', ({ code, user, text }) => {
+  socket.on('chatMessage', ({ code, user, text, fileUrl, fileName, fileType }) => {
     if (rooms[code]) {
-      io.to(code).emit('chatMessage', { user, text, timestamp: new Date() });
+      io.to(code).emit('chatMessage', { user, text, fileUrl, fileName, fileType, timestamp: new Date() });
     }
   });
 
@@ -1529,6 +1647,15 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    
+    // Handle offline status
+    for (let [userId, sockId] of onlineUsers.entries()) {
+      if (sockId === socket.id) {
+        onlineUsers.delete(userId);
+        io.emit('userStatusChanged', { userId, status: 'offline' });
+        break;
+      }
+    }
     for (const code in rooms) {
       const room = rooms[code];
       let stateChanged = false;

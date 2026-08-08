@@ -3,7 +3,6 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Trophy, User, Settings } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 
-
 export default function Navbar() {
   const currentUser = useAuthStore(state => state.user);
   const navigate = useNavigate();
@@ -97,8 +96,10 @@ export default function Navbar() {
 
       {/* User Profile Area */}
       {currentUser?.name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>
             {currentUser.name}
           </span>
           <div 
@@ -115,6 +116,7 @@ export default function Navbar() {
             }}
           >
             {currentUser.name.charAt(0).toUpperCase()}
+          </div>
           </div>
         </div>
       )}

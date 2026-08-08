@@ -106,8 +106,9 @@ export default function RainBackground() {
       }
     }
 
-    // Initialize 300 raindrops for a balanced, performant shower
-    for (let i = 0; i < 300; i++) {
+    // Calculate raindrops based on screen width for consistent density (approx 1 drop per 5px width)
+    const dropCount = Math.floor(canvas.width / 5);
+    for (let i = 0; i < dropCount; i++) {
       raindrops.push(new Raindrop());
     }
 

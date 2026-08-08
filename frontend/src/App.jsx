@@ -1,6 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { socket } from './socket';
+import useAuthStore from './store/useAuthStore';
 import RainBackground from './components/RainBackground';
 import Navbar from './components/Navbar';
+import FriendsPanel from './components/FriendsPanel';
+import GlobalChatBubble from './components/GlobalChatBubble';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -14,14 +19,31 @@ import Settings from './pages/Settings';
 
 function App() {
   const location = useLocation();
+  const user = useAuthStore(state => state.user);
+  
   const isTestUI = location.pathname.startsWith('/test') || location.pathname.startsWith('/review');
   const isAuth = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/reset-password';
   const showGlobalUI = !isTestUI && !isAuth;
+
+  useEffect(() => {
+    if (user?.id) {
+      socket.emit('authenticate', user.id);
+    }
+  }, [user]);
 
   return (
     <>
       {!isTestUI && <RainBackground />}
       {showGlobalUI && <Navbar />}
+      
+      {/* Global Friends & Chat System */}
+      {user?.id && (
+        <>
+          <GlobalChatBubble />
+          <FriendsPanel />
+        </>
+      )}
+
       <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
