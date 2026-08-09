@@ -4,6 +4,7 @@ import { Clock, CheckCircle2, AlertCircle, Bookmark, ChevronRight, XCircle, Mess
 import { socket } from '../socket';
 import Results from '../components/Results';
 import DIChartRenderer from '../components/DIChartRenderer';
+import useChatStore from '../store/useChatStore';
 import '../TestEngine.css';
 
 const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') : '';
@@ -189,6 +190,7 @@ export default function TestEngine() {
       setLiveStats(mpRoom.stats || {});
       setTestSessionId(mpRoom.code); // Shared test session ID for everyone in the room
       socket.emit('joinRoom', { code: mpRoom.code, user: currentUser });
+      useChatStore.getState().setActiveRoomCode(mpRoom.code);
       if (mpRoom.state === 'FINISHED') {
         setIsSubmitted(true);
       }
@@ -1398,7 +1400,6 @@ export default function TestEngine() {
           )}
 
       </div>
-
 
     </div>
     );

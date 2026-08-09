@@ -14,7 +14,7 @@ const useChatStore = create((set, get) => ({
     if (state.toastTimer) clearTimeout(state.toastTimer);
     const timer = setTimeout(() => {
       set({ latestToast: null });
-    }, 4000);
+    }, 5000);
     return { latestToast: { title, message }, toastTimer: timer };
   }),
 

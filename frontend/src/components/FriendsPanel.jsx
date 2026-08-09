@@ -70,6 +70,15 @@ export default function FriendsPanel() {
     // Listen for Lobby Chat Messages
     const handleLobbyMessage = (msg) => {
       addLobbyMessage(msg);
+      
+      const currentStore = useChatStore.getState();
+      if (msg.user.id !== currentUser.id && (!currentStore.isPanelOpen || currentStore.activeTab !== 'match')) {
+         let displayMessage = msg.text || '';
+         if (msg.fileUrl) {
+           displayMessage = displayMessage === 'Sent an attachment' ? 'Sent an attachment' : `📎 ${displayMessage}`;
+         }
+         showToast(`${msg.user.name} (Match)`, displayMessage);
+      }
     };
 
     socket.on('newPrivateMessage', handleNewPrivateMessage);
