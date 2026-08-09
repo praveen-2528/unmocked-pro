@@ -58,6 +58,7 @@ export default function Dashboard() {
   const [activeRooms, setActiveRooms] = useState([]);
   const [editingNameId, setEditingNameId] = useState(null);
   const [editingNameValue, setEditingNameValue] = useState('');
+  const [activeChessRooms, setActiveChessRooms] = useState([]);
   
   // Study Room State
   const [newRoomName, setNewRoomName] = useState('');
@@ -96,6 +97,11 @@ export default function Dashboard() {
           fetch('/api/active-rooms')
             .then(res => res.json())
             .then(data => setActiveRooms(data))
+            .catch(err => console.error(err));
+            
+          fetch('/api/active-chess-rooms')
+            .then(res => res.json())
+            .then(data => setActiveChessRooms(data))
             .catch(err => console.error(err));
         }
       }
@@ -499,9 +505,11 @@ export default function Dashboard() {
   };
 
   const handleJoinRoom = (code = joinCode) => {
-    if (!code.trim()) return;
+    const trimmedCode = code.trim();
+    if (!trimmedCode) return;
     setError('');
-    socket.emit('joinRoom', { code: code.trim(), user: currentUser });
+    
+    socket.emit('joinRoom', { code: trimmedCode, user: currentUser });
   };
 
   const handleSaveName = (id) => {
@@ -824,8 +832,25 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                  <input type="text" className="input-field" placeholder="Or enter 6-digit code..." value={joinCode} onChange={e => setJoinCode(e.target.value)} style={{ width: '200px', fontSize: '0.9rem', padding: '8px 12px' }} />
+                {activeChessRooms.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '500px', marginTop: '16px' }}>
+                    <h3 className="geist-pixel" style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Live Chess Matches</h3>
+                    {activeChessRooms.map(r => (
+                      <div key={r.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '0.9rem' }}>{r.hostName}'s Chess Match</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{r.playersCount}/2 Players • {r.status}</div>
+                        </div>
+                        <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => navigate(`/chess/${r.code}`)}>
+                          Join ({r.code})
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                  <input type="text" className="input-field" placeholder="Enter test room code (6-digit)..." value={joinCode} onChange={e => setJoinCode(e.target.value)} style={{ width: '280px', fontSize: '0.9rem', padding: '8px 12px' }} />
                   <button className="btn btn-glass" style={{ padding: '8px 16px', fontSize: '0.9rem' }} onClick={() => handleJoinRoom()}>Join Private</button>
                 </div>
                 {error && step === 0 && <p style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</p>}

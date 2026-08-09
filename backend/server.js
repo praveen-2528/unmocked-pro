@@ -459,6 +459,18 @@ app.get('/api/active-rooms', (req, res) => {
   res.json(activeRooms);
 });
 
+app.get('/api/active-chess-rooms', (req, res) => {
+  const activeChess = Object.entries(chessRooms || {})
+    .filter(([code, r]) => r.status === 'LOBBY' || r.status === 'COUNTDOWN' || r.status === 'PLAYING')
+    .map(([code, r]) => ({
+      code,
+      hostName: r.p1?.name || 'Unknown',
+      status: r.status,
+      playersCount: r.black ? 2 : 1
+    }));
+  res.json(activeChess);
+});
+
 // Push Notifications Endpoints
 app.post('/api/subscribe', (req, res) => {
   const { user_id, subscription } = req.body;
@@ -1359,22 +1371,43 @@ io.on('connection', (socket) => {
     }
   });
 
+  const getSafeChessRoom = (room) => {
+    const { countdownInterval, ...safeRoom } = room;
+    return safeRoom;
+  };
+
   // --- Chess Multiplayer Logic ---
   socket.on('joinChessRoom', ({ roomId, user }) => {
     socket.join(roomId);
     if (!chessRooms[roomId]) {
-      chessRooms[roomId] = { white: user, black: null, status: 'LOBBY' };
-    } else if (!chessRooms[roomId].black && chessRooms[roomId].white.id !== user.id) {
-      chessRooms[roomId].black = user;
+      chessRooms[roomId] = { p1: user, white: user, black: null, status: 'LOBBY', countdownInterval: null };
+    } else if (!chessRooms[roomId].black && chessRooms[roomId].p1.id !== user.id) {
+      // Both players are here, randomly assign colors
+      const isP1White = Math.random() > 0.5;
+      chessRooms[roomId].white = isP1White ? chessRooms[roomId].p1 : user;
+      chessRooms[roomId].black = isP1White ? user : chessRooms[roomId].p1;
     }
     // Broadcast state to everyone in the room
-    io.to(roomId).emit('chessRoomState', chessRooms[roomId]);
+    io.to(roomId).emit('chessRoomState', getSafeChessRoom(chessRooms[roomId]));
   });
 
   socket.on('startChessMatch', ({ roomId }) => {
-    if (chessRooms[roomId]) {
-      chessRooms[roomId].status = 'PLAYING';
-      io.to(roomId).emit('chessRoomState', chessRooms[roomId]);
+    if (chessRooms[roomId] && chessRooms[roomId].black && chessRooms[roomId].status === 'LOBBY') {
+      chessRooms[roomId].status = 'COUNTDOWN';
+      let timeLeft = 15;
+      io.to(roomId).emit('chessCountdown', timeLeft);
+      
+      chessRooms[roomId].countdownInterval = setInterval(() => {
+        timeLeft--;
+        io.to(roomId).emit('chessCountdown', timeLeft);
+        if (timeLeft <= 0) {
+          clearInterval(chessRooms[roomId].countdownInterval);
+          chessRooms[roomId].status = 'PLAYING';
+          io.to(roomId).emit('chessRoomState', getSafeChessRoom(chessRooms[roomId]));
+        }
+      }, 1000);
+      
+      io.to(roomId).emit('chessRoomState', getSafeChessRoom(chessRooms[roomId]));
     }
   });
 
@@ -1384,6 +1417,26 @@ io.on('connection', (socket) => {
 
   socket.on('chessReset', ({ roomId }) => {
     socket.to(roomId).emit('chessReset');
+  });
+
+  socket.on('chessResign', ({ roomId, winner }) => {
+    if (chessRooms[roomId]) {
+      chessRooms[roomId].status = 'FINISHED';
+      if (chessRooms[roomId].countdownInterval) clearInterval(chessRooms[roomId].countdownInterval);
+      io.to(roomId).emit('chessGameOver', { reason: 'Resignation', winner });
+    }
+  });
+
+  socket.on('chessOfferDraw', ({ roomId }) => {
+    socket.to(roomId).emit('chessDrawOffered');
+  });
+
+  socket.on('chessAcceptDraw', ({ roomId }) => {
+    if (chessRooms[roomId]) {
+      chessRooms[roomId].status = 'FINISHED';
+      if (chessRooms[roomId].countdownInterval) clearInterval(chessRooms[roomId].countdownInterval);
+      io.to(roomId).emit('chessGameOver', { reason: 'Draw Agreement', winner: null });
+    }
   });
   // -------------------------------
 

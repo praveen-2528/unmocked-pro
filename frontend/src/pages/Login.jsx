@@ -40,13 +40,15 @@ export default function Login() {
       }
 
       // Save user and redirect
-      setUser(data.user);
       if (data.requiresPasswordReset) {
         navigate('/reset-password', { state: { token: data.token } });
-      } else if (data.user.is_admin) {
-        navigate('/admin');
       } else {
-        navigate('/home');
+        setUser(data.user);
+        if (data.user.is_admin) {
+          navigate('/admin');
+        } else {
+          navigate('/home');
+        }
       }
     } catch (err) {
       setError(err.message);
