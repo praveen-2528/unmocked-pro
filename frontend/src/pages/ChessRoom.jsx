@@ -124,6 +124,10 @@ export default function ChessRoom() {
          setGame(new Chess());
          setCountdown(null);
       }
+      
+      if (state.status === 'COUNTDOWN') {
+        setCountdown(state.countdown);
+      }
     };
 
     const handleChessMove = ({ move, fen }) => {
@@ -141,11 +145,16 @@ export default function ChessRoom() {
       }
     };
 
+    const handleChatMessage = (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+    };
+
     socket.on('chessRoomState', handleRoomState);
     socket.on('chessMove', handleChessMove);
     socket.on('chessCountdown', setCountdown);
     socket.on('chessGameOver', handleGameOver);
     socket.on('chessDrawOffered', handleDrawOffered);
+    socket.on('chatMessage', handleChatMessage);
 
     return () => {
       socket.off('chessRoomState', handleRoomState);
@@ -153,6 +162,7 @@ export default function ChessRoom() {
       socket.off('chessCountdown');
       socket.off('chessGameOver', handleGameOver);
       socket.off('chessDrawOffered', handleDrawOffered);
+      socket.off('chatMessage', handleChatMessage);
     };
   }, [roomId, user, navigate]);
 
@@ -260,6 +270,30 @@ export default function ChessRoom() {
                <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '1.1rem', margin: 0 }}>Waiting for Host to start...</p>
              )}
           </div>
+
+          {/* Lobby Chat */}
+          <div style={{ marginTop: '30px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px', textAlign: 'left' }}>
+             <h4 style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '0.9rem' }}>Lobby Chat</h4>
+             <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+               {chatMessages.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic', margin: 0 }}>No messages yet...</p>}
+               {chatMessages.map((msg, i) => (
+                 <div key={i} style={{ fontSize: '0.9rem' }}>
+                   <strong style={{ color: msg.user.id === user.id ? 'var(--accent-color)' : 'var(--text-primary)' }}>{msg.user.name}: </strong>
+                   <span style={{ color: 'var(--text-secondary)' }}>{msg.text}</span>
+                 </div>
+               ))}
+               <div ref={chatEndRef} />
+             </div>
+             <form onSubmit={(e) => {
+               e.preventDefault();
+               if (!chatInput.trim()) return;
+               socket.emit('chatMessage', { code: roomId, user, text: chatInput });
+               setChatInput('');
+             }} style={{ display: 'flex', gap: '8px' }}>
+               <input type="text" className="input-field" placeholder="Type a message..." value={chatInput} onChange={e => setChatInput(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />
+               <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }} disabled={!chatInput.trim()}>Send</button>
+             </form>
+          </div>
         </div>
       </div>
     );
@@ -354,9 +388,33 @@ export default function ChessRoom() {
               <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '1.1rem', margin: 0 }}>
                 {gameOverData.winner ? `${gameOverData.winner === myColor ? user?.name : opponent?.name} wins!` : 'Game drawn.'}
               </p>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Reason: {gameOverData.reason}</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px', margin: 0 }}>{gameOverData.reason}</p>
             </div>
           )}
+
+          {/* In-Game Chat */}
+          <div style={{ marginTop: '30px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px', width: boardWidth, textAlign: 'left' }}>
+             <h4 style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '0.9rem' }}>Match Chat</h4>
+             <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+               {chatMessages.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic', margin: 0 }}>No messages yet...</p>}
+               {chatMessages.map((msg, i) => (
+                 <div key={i} style={{ fontSize: '0.9rem' }}>
+                   <strong style={{ color: msg.user.id === user.id ? 'var(--accent-color)' : 'var(--text-primary)' }}>{msg.user.name}: </strong>
+                   <span style={{ color: 'var(--text-secondary)' }}>{msg.text}</span>
+                 </div>
+               ))}
+               <div ref={chatEndRef} />
+             </div>
+             <form onSubmit={(e) => {
+               e.preventDefault();
+               if (!chatInput.trim()) return;
+               socket.emit('chatMessage', { code: roomId, user, text: chatInput });
+               setChatInput('');
+             }} style={{ display: 'flex', gap: '8px' }}>
+               <input type="text" className="input-field" placeholder="Type a message..." value={chatInput} onChange={e => setChatInput(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />
+               <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }} disabled={!chatInput.trim()}>Send</button>
+             </form>
+          </div>
         </div>
     </div>
   );
