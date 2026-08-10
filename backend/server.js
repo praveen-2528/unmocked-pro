@@ -1780,6 +1780,46 @@ io.on('connection', (socket) => {
   });
 });
 
+// Idle Room Cleanup Interval (5 minutes offline in LOBBY state)
+setInterval(() => {
+  const now = Date.now();
+  const FIVE_MINUTES = 5 * 60 * 1000;
+
+  // Check test rooms
+  for (const code in rooms) {
+    const room = rooms[code];
+    if (room.state === 'LOBBY' && room.host && room.host.id) {
+      const isHostOnline = onlineUsers.has(room.host.id);
+      if (!isHostOnline) {
+        if (!room.hostOfflineSince) room.hostOfflineSince = now;
+        else if (now - room.hostOfflineSince > FIVE_MINUTES) {
+          io.to(code).emit('roomClosed');
+          delete rooms[code];
+        }
+      } else {
+        room.hostOfflineSince = null;
+      }
+    }
+  }
+
+  // Check chess rooms
+  for (const code in chessRooms) {
+    const room = chessRooms[code];
+    if (room.status === 'LOBBY' && room.p1 && room.p1.id) {
+      const isHostOnline = onlineUsers.has(room.p1.id);
+      if (!isHostOnline) {
+        if (!room.hostOfflineSince) room.hostOfflineSince = now;
+        else if (now - room.hostOfflineSince > FIVE_MINUTES) {
+          io.to(code).emit('chessGameOver', { reason: 'Host abandoned', winner: null });
+          delete chessRooms[code];
+        }
+      } else {
+        room.hostOfflineSince = null;
+      }
+    }
+  }
+}, 60 * 1000); // Sweep every 1 minute
+
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, '../frontend/dist');
 if (fs.existsSync(frontendDist)) {
