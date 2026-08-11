@@ -415,8 +415,8 @@ export default function ChessRoom() {
     <div style={{ minHeight: '100vh', width: '100vw', background: '#10141b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0, zIndex: 100 }} ref={containerRef}>
       
       {/* Top Absolute Navigation Bar */}
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
-        <button onClick={handleResign} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '24px', padding: '8px' }}>✕</button>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box', zIndex: 50 }}>
+        <button onClick={handleResign} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '24px', padding: '8px', zIndex: 50 }}>✕</button>
         
         <div style={{ background: '#2d3748', borderRadius: '24px', padding: '6px 20px', display: 'flex', gap: '24px', alignItems: 'center', border: '1px solid #4a5568', color: 'white', fontWeight: 'bold' }}>
           <span style={{ color: oppTime < 60 ? 'var(--danger-color)' : (game.turn() === (myColor === 'white' ? 'b' : 'w') ? 'var(--accent-color)' : 'white') }}>
@@ -491,7 +491,7 @@ export default function ChessRoom() {
       )}
 
       {/* Subtle Bottom Controls (Draw) */}
-      <div style={{ position: 'absolute', bottom: '24px', display: 'flex', gap: '16px', zIndex: 5 }}>
+      <div style={{ position: 'absolute', bottom: '24px', display: 'flex', gap: '16px', zIndex: 50 }}>
         <button className="btn btn-glass" onClick={handleOfferDraw} style={{ padding: '8px 24px', borderRadius: '24px', fontSize: '0.9rem', border: '1px solid #334155', color: 'var(--text-secondary)' }}>Offer Draw</button>
       </div>
 
