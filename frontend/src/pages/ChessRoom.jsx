@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -96,6 +96,19 @@ export default function ChessRoom() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const customPieces = useMemo(() => {
+    const pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
+    const pieceComponents = {};
+    pieces.forEach(piece => {
+      pieceComponents[piece] = ({ squareWidth }) => (
+        <div style={{ width: squareWidth, height: squareWidth, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <img src={`/chess-pieces/${piece}.png`} style={{ width: '90%', height: '90%', objectFit: 'contain' }} alt={piece} />
+        </div>
+      );
+    });
+    return pieceComponents;
   }, []);
 
   useEffect(() => {
@@ -323,99 +336,87 @@ export default function ChessRoom() {
   }
 
   return (
-    <div className="container" style={{ paddingTop: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center' }} ref={containerRef}>
-        <div className="glass-panel" style={{ padding: '20px', maxWidth: '800px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: boardWidth, marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: myColor === 'white' ? '#0f172a' : '#f8fafc', color: myColor === 'white' ? 'white' : '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold', border: '2px solid #334155' }}>
-                {opponent?.name?.charAt(0) || '?'}
-              </div>
-              <div>
-                <p style={{ color: 'var(--text-primary)', margin: 0, fontWeight: 'bold' }}>{opponent ? opponent.name : 'Opponent'}</p>
-                <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  {oppCaptured.map((p, i) => <span key={i}>{oppIcons[p]}</span>)}
-                  {oppAdvantage > 0 && <span style={{ fontSize: '0.8rem', color: 'var(--success-color)', marginLeft: '4px', fontWeight: 'bold' }}>+{oppAdvantage}</span>}
-                </div>
-              </div>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.5)', padding: '8px 16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '1.2rem', color: oppTime < 60 ? 'var(--danger-color)' : 'white' }}>
-              {formatTime(oppTime)}
-            </div>
-          </div>
-          
-          <div style={{ borderRadius: '4px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', position: 'relative', width: boardWidth, height: boardWidth, marginBottom: '10px' }}>
-            <Chessboard 
-              position={game.fen()} 
-              onPieceDrop={onDrop} 
-              boardOrientation={myColor}
-              boardWidth={boardWidth}
-              customDarkSquareStyle={{ backgroundColor: '#3b82f6' }}
-              customLightSquareStyle={{ backgroundColor: '#eff6ff' }}
-            />
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: boardWidth }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: myColor === 'white' ? '#f8fafc' : '#0f172a', color: myColor === 'white' ? '#0f172a' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold', border: '2px solid #334155' }}>
-                {user?.name?.charAt(0) || '?'}
-              </div>
-              <div>
-                <p style={{ color: 'var(--text-primary)', margin: 0, fontWeight: 'bold' }}>{user ? user.name : 'You'}</p>
-                <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  {myCaptured.map((p, i) => <span key={i}>{myIcons[p]}</span>)}
-                  {myAdvantage > 0 && <span style={{ fontSize: '0.8rem', color: 'var(--success-color)', marginLeft: '4px', fontWeight: 'bold' }}>+{myAdvantage}</span>}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ background: 'rgba(0,0,0,0.5)', padding: '8px 16px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '1.2rem', color: myTime < 60 ? 'var(--danger-color)' : 'white' }}>
-                {formatTime(myTime)}
-              </div>
-            </div>
-          </div>
-
-          {!gameOverData && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', width: boardWidth, marginTop: '20px', gap: '12px' }}>
-               <button className="btn btn-glass" onClick={handleOfferDraw} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>Offer Draw</button>
-               <button className="btn btn-primary" onClick={handleResign} style={{ background: 'var(--danger-color)', padding: '8px 16px', fontSize: '0.9rem' }}>Resign</button>
+    <div style={{ minHeight: '100vh', width: '100vw', background: '#10141b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0, zIndex: 100 }} ref={containerRef}>
+      
+      {/* Top Absolute Navigation Bar */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
+        <button onClick={handleResign} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '24px', padding: '8px' }}>✕</button>
+        
+        <div style={{ background: '#2d3748', borderRadius: '24px', padding: '6px 20px', display: 'flex', gap: '24px', alignItems: 'center', border: '1px solid #4a5568', color: 'white', fontWeight: 'bold' }}>
+          <span style={{ color: oppTime < 60 ? 'var(--danger-color)' : (game.turn() === (myColor === 'white' ? 'b' : 'w') ? 'var(--accent-color)' : 'white') }}>
+            ⏱ {formatTime(oppTime)}
+          </span>
+          <span style={{ width: '1px', height: '16px', background: '#4a5568' }} />
+          <span style={{ color: myTime < 60 ? 'var(--danger-color)' : (game.turn() === (myColor === 'white' ? 'w' : 'b') ? 'var(--accent-color)' : 'white') }}>
+            ⏱ {formatTime(myTime)}
+          </span>
+        </div>
+        
+        <div style={{ minWidth: '40px', display: 'flex', justifyContent: 'flex-end' }}>
+          {oppAdvantage > 0 && (
+            <div style={{ background: '#1e293b', borderRadius: '16px', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid #334155', color: 'var(--success-color)', fontWeight: 'bold' }}>
+              ⬆ {oppAdvantage}
             </div>
           )}
-          
-          {gameOverData && (
-            <div style={{ marginTop: '20px', width: boardWidth, padding: '16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', textAlign: 'center' }}>
-              <h3 style={{ color: 'white', marginBottom: '8px' }}>Game Over</h3>
-              <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '1.1rem', margin: 0 }}>
-                {gameOverData.winner ? `${gameOverData.winner === myColor ? user?.name : opponent?.name} wins!` : 'Game drawn.'}
-              </p>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px', margin: 0 }}>{gameOverData.reason}</p>
+          {myAdvantage > 0 && (
+            <div style={{ background: '#1e293b', borderRadius: '16px', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid #334155', color: 'var(--success-color)', fontWeight: 'bold' }}>
+              ⬆ {myAdvantage}
             </div>
           )}
+        </div>
+      </div>
 
-          {/* In-Game Chat */}
-          <div style={{ marginTop: '30px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px', width: boardWidth, textAlign: 'left' }}>
-             <h4 style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '0.9rem' }}>Match Chat</h4>
-             <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-               {chatMessages.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic', margin: 0 }}>No messages yet...</p>}
-               {chatMessages.map((msg, i) => (
-                 <div key={i} style={{ fontSize: '0.9rem' }}>
-                   <strong style={{ color: msg.user.id === user.id ? 'var(--accent-color)' : 'var(--text-primary)' }}>{msg.user.name}: </strong>
-                   <span style={{ color: 'var(--text-secondary)' }}>{msg.text}</span>
-                 </div>
-               ))}
-               <div ref={chatEndRef} />
-             </div>
-             <form onSubmit={(e) => {
-               e.preventDefault();
-               if (!chatInput.trim()) return;
-               socket.emit('chatMessage', { code: roomId, user, text: chatInput });
-               setChatInput('');
-             }} style={{ display: 'flex', gap: '8px' }}>
-               <input type="text" className="input-field" placeholder="Type a message..." value={chatInput} onChange={e => setChatInput(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />
-               <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }} disabled={!chatInput.trim()}>Send</button>
-             </form>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: boardWidth, gap: '12px' }}>
+        {/* Opponent Avatar Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: myColor === 'white' ? '#0f172a' : '#f8fafc', color: myColor === 'white' ? 'white' : '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', border: '2px solid #334155', marginBottom: '8px' }}>
+            {opponent?.name?.charAt(0) || '?'}
+          </div>
+          <div style={{ display: 'flex', gap: '2px', fontSize: '1.2rem', color: 'var(--text-secondary)', minHeight: '24px' }}>
+            {oppCaptured.length > 0 && oppCaptured.map((p, i) => <span key={i}>{oppIcons[p]}</span>)}
           </div>
         </div>
+
+        {/* Board */}
+        <div style={{ borderRadius: '8px', overflow: 'hidden', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', width: boardWidth, height: boardWidth }}>
+          <Chessboard 
+            position={game.fen()} 
+            onPieceDrop={onDrop} 
+            boardOrientation={myColor}
+            boardWidth={boardWidth}
+            customDarkSquareStyle={{ backgroundColor: '#26353f' }}
+            customLightSquareStyle={{ backgroundColor: '#33414e' }}
+            customPieces={customPieces}
+            animationDuration={200}
+          />
+        </div>
+
+        {/* Local Player Avatar Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '2px', fontSize: '1.2rem', color: 'var(--text-secondary)', minHeight: '24px', marginBottom: '8px' }}>
+            {myCaptured.length > 0 && myCaptured.map((p, i) => <span key={i}>{myIcons[p]}</span>)}
+          </div>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: myColor === 'white' ? '#f8fafc' : '#0f172a', color: myColor === 'white' ? '#0f172a' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold', border: '2px solid #334155' }}>
+            {user?.name?.charAt(0) || '?'}
+          </div>
+        </div>
+      </div>
+
+      {gameOverData && (
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(30, 41, 59, 0.95)', padding: '24px 48px', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center', zIndex: 10, backdropFilter: 'blur(10px)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
+          <h2 style={{ color: 'white', marginBottom: '8px', fontSize: '2rem' }}>Game Over</h2>
+          <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '1.2rem', margin: '0 0 8px 0' }}>
+            {gameOverData.winner ? `${gameOverData.winner === myColor ? 'You' : opponent?.name} win!` : 'Game drawn.'}
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>{gameOverData.reason}</p>
+        </div>
+      )}
+
+      {/* Subtle Bottom Controls (Draw) */}
+      <div style={{ position: 'absolute', bottom: '24px', display: 'flex', gap: '16px', zIndex: 5 }}>
+        <button className="btn btn-glass" onClick={handleOfferDraw} style={{ padding: '8px 24px', borderRadius: '24px', fontSize: '0.9rem', border: '1px solid #334155', color: 'var(--text-secondary)' }}>Offer Draw</button>
+      </div>
+
     </div>
   );
 }
