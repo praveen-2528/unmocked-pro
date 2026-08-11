@@ -81,6 +81,15 @@ export default function ChessRoom() {
 
   const [boardWidth, setBoardWidth] = useState(400);
   const containerRef = useRef(null);
+  const chatEndRef = useRef(null);
+
+  // Chat State
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+
+  useEffect(() => {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   // Responsive board sizing
   useEffect(() => {
