@@ -245,11 +245,16 @@ export default function Dashboard() {
     } else {
       prompt += `I need you to generate exactly ${qCount} multiple-choice questions for the subject/topic: "${subjectName}". `;
     }
-    prompt += `Ensure the questions closely mirror the most recent pattern and difficulty level of this specific exam.\n\n`;
+    prompt += `Ensure the questions closely mirror the EXACT pattern, syllabus, and extreme rigor of the actual ${examName} exam.\n\n`;
     
-    prompt += `RULES:\n`;
-    prompt += `1. The difficulty level should be Medium to Hard.\n`;
-    prompt += `2. Each question must have exactly ${optionsCount} options.\n`;
+    prompt += `CRITICAL INSTRUCTIONS FOR RIGOR & COMPLEXITY:\n`;
+    prompt += `1. AVOID BASIC TRIVIA: The questions MUST NOT be basic definitions, direct formula applications, or simple factual lookups. They must require multi-step reasoning, critical thinking, advanced calculations, or deep conceptual understanding.\n`;
+    prompt += `2. STRICT EXAM-LEVEL CALIBRATION: Calibrate the difficulty strictly to the ${examName} level. For competitive exams, the questions must be exceptionally challenging, featuring nuanced scenarios, edge cases, and high cognitive load.\n`;
+    prompt += `3. PLAUSIBLE DISTRACTORS: The incorrect options MUST be highly plausible. They should represent common student misconceptions, intermediate calculation errors, or partial truths. Do not provide obviously wrong options.\n`;
+    prompt += `4. OVERALL DIFFICULTY: The difficulty tier should strictly range from Medium-Hard to Extremely Hard.\n\n`;
+
+    prompt += `FORMAT RULES:\n`;
+    prompt += `1. Each question must have exactly ${optionsCount} options.\n`;
     prompt += `3. Only ONE option can be correct.\n`;
     prompt += `4. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
     prompt += `5. Do NOT include any conversational text before or after the output.\n`;
