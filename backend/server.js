@@ -1389,6 +1389,34 @@ io.on('connection', (socket) => {
     }
     // Broadcast state to everyone in the room
     io.to(roomId).emit('chessRoomState', getSafeChessRoom(chessRooms[roomId]));
+
+    if (chessRooms[roomId] && chessRooms[roomId].status === 'PLAYING') {
+      socket.to(roomId).emit('chessRequestSync');
+    }
+  });
+
+  socket.on('leaveChessRoom', ({ roomId, user }) => {
+    socket.leave(roomId);
+    if (chessRooms[roomId]) {
+      if (chessRooms[roomId].status === 'PLAYING') {
+        const winner = chessRooms[roomId].white.id === user.id ? 'black' : 'white';
+        chessRooms[roomId].status = 'FINISHED';
+        if (chessRooms[roomId].countdownInterval) clearInterval(chessRooms[roomId].countdownInterval);
+        io.to(roomId).emit('chessGameOver', { reason: 'Opponent disconnected', winner });
+      } else if (chessRooms[roomId].status === 'LOBBY') {
+        if (chessRooms[roomId].p1.id === user.id) {
+          delete chessRooms[roomId];
+          io.to(roomId).emit('chessRoomClosed');
+        } else {
+          chessRooms[roomId].black = null;
+          io.to(roomId).emit('chessRoomState', getSafeChessRoom(chessRooms[roomId]));
+        }
+      }
+    }
+  });
+
+  socket.on('chessSyncState', ({ roomId, state }) => {
+    socket.to(roomId).emit('chessSyncState', state);
   });
 
   socket.on('startChessMatch', ({ roomId }) => {

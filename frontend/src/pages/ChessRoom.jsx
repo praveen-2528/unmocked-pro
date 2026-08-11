@@ -90,6 +90,16 @@ export default function ChessRoom() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
 
+  const syncStateRef = useRef({ fen: '', whiteTime: 600, blackTime: 600, chatMessages: [], timeoutWinner: null, gameEndReason: null, status: 'LOBBY' });
+
+  useEffect(() => {
+    syncStateRef.current = { fen: game.fen(), whiteTime, blackTime, chatMessages, timeoutWinner, gameEndReason, status: roomInfo?.status };
+  }, [game, whiteTime, blackTime, chatMessages, timeoutWinner, gameEndReason, roomInfo?.status]);
+
+  const handleLeaveRoom = () => {
+    navigate('/dashboard');
+  };
+
   useEffect(() => {
     if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
@@ -174,20 +184,40 @@ export default function ChessRoom() {
       setChatMessages(prev => [...prev, msg]);
     };
 
+    const handleRequestSync = () => {
+      if (syncStateRef.current.status === 'PLAYING') {
+        socket.emit('chessSyncState', { roomId, state: syncStateRef.current });
+      }
+    };
+
+    const handleSyncState = (state) => {
+      setGame(new Chess(state.fen));
+      setWhiteTime(state.whiteTime);
+      setBlackTime(state.blackTime);
+      setChatMessages(state.chatMessages || []);
+      if (state.timeoutWinner) setTimeoutWinner(state.timeoutWinner);
+      if (state.gameEndReason) setGameEndReason(state.gameEndReason);
+    };
+
     socket.on('chessRoomState', handleRoomState);
     socket.on('chessMove', handleChessMove);
     socket.on('chessCountdown', setCountdown);
     socket.on('chessGameOver', handleGameOver);
     socket.on('chessDrawOffered', handleDrawOffered);
     socket.on('chatMessage', handleChatMessage);
+    socket.on('chessRequestSync', handleRequestSync);
+    socket.on('chessSyncState', handleSyncState);
 
     return () => {
+      socket.emit('leaveChessRoom', { roomId, user });
       socket.off('chessRoomState', handleRoomState);
       socket.off('chessMove', handleChessMove);
       socket.off('chessCountdown');
       socket.off('chessGameOver', handleGameOver);
       socket.off('chessDrawOffered', handleDrawOffered);
       socket.off('chatMessage', handleChatMessage);
+      socket.off('chessRequestSync', handleRequestSync);
+      socket.off('chessSyncState', handleSyncState);
     };
   }, [roomId, user, navigate]);
 
@@ -327,7 +357,8 @@ export default function ChessRoom() {
   if (roomInfo.status === 'LOBBY' || roomInfo.status === 'COUNTDOWN') {
     return (
       <div className="container" style={{ paddingTop: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div className="glass-panel" style={{ padding: '40px', maxWidth: '500px', width: '100%', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '40px', maxWidth: '500px', width: '100%', textAlign: 'center', position: 'relative' }}>
+          <button onClick={handleLeaveRoom} style={{ position: 'absolute', top: '16px', left: '16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '24px' }} title="Leave Room">←</button>
           <h2 className="geist-pixel" style={{ color: 'var(--text-primary)', marginBottom: '20px' }}>Room: {roomId}</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Share this code to invite a friend.</p>
           <div style={{ display: 'flex', justifyContent: 'space-around', margin: '30px 0' }}>
@@ -481,12 +512,13 @@ export default function ChessRoom() {
       </div>
 
       {gameOverData && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(30, 41, 59, 0.95)', padding: '24px 48px', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center', zIndex: 10, backdropFilter: 'blur(10px)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(30, 41, 59, 0.95)', padding: '24px 48px', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center', zIndex: 100, backdropFilter: 'blur(10px)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
           <h2 style={{ color: 'white', marginBottom: '8px', fontSize: '2rem' }}>Game Over</h2>
           <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '1.2rem', margin: '0 0 8px 0' }}>
             {gameOverData.winner ? `${gameOverData.winner === myColor ? 'You' : opponent?.name} win!` : 'Game drawn.'}
           </p>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}>{gameOverData.reason}</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: '0 0 24px 0' }}>{gameOverData.reason}</p>
+          <button className="btn btn-primary" onClick={handleLeaveRoom} style={{ padding: '12px 32px', fontSize: '1.1rem', borderRadius: '24px' }}>Back to Dashboard</button>
         </div>
       )}
 
