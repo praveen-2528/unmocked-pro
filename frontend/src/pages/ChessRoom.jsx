@@ -83,6 +83,9 @@ export default function ChessRoom() {
   const containerRef = useRef(null);
   const chatEndRef = useRef(null);
 
+  const [moveFrom, setMoveFrom] = useState('');
+  const [optionSquares, setOptionSquares] = useState({});
+
   // Chat State
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -207,10 +210,78 @@ export default function ChessRoom() {
     }
   }, [roomInfo?.status, game.fen(), timeoutWinner, gameEndReason]);
 
+  function getMoveOptions(square) {
+    const moves = game.moves({ square, verbose: true });
+    if (moves.length === 0) {
+      setOptionSquares({});
+      return false;
+    }
+
+    const newSquares = {};
+    moves.forEach((move) => {
+      newSquares[move.to] = {
+        background:
+          game.get(move.to) && game.get(move.to).color !== game.get(square).color
+            ? 'radial-gradient(circle, rgba(0,0,0,.3) 85%, transparent 85%)'
+            : 'radial-gradient(circle, rgba(0,0,0,.3) 25%, transparent 25%)',
+        borderRadius: '50%',
+      };
+    });
+    newSquares[square] = {
+      background: 'rgba(255, 255, 0, 0.3)',
+    };
+    setOptionSquares(newSquares);
+    return true;
+  }
+
+  function onSquareClick(square) {
+    if (game.turn() === 'w' && myColor !== 'white') return;
+    if (game.turn() === 'b' && myColor !== 'black') return;
+    if (timeoutWinner || gameEndReason || game.isGameOver()) return;
+
+    function resetFirstMove(sq) {
+      const hasOptions = getMoveOptions(sq);
+      if (hasOptions) setMoveFrom(sq);
+      else {
+        setMoveFrom('');
+        setOptionSquares({});
+      }
+    }
+
+    if (!moveFrom) {
+      resetFirstMove(square);
+      return;
+    }
+
+    const gameCopy = new Chess(game.fen());
+    try {
+      const move = gameCopy.move({
+        from: moveFrom,
+        to: square,
+        promotion: 'q'
+      });
+
+      if (move === null) {
+        resetFirstMove(square);
+        return;
+      }
+      
+      setGame(gameCopy);
+      socket.emit('chessMove', { roomId, move, fen: gameCopy.fen(), pgn: gameCopy.pgn() });
+      setMoveFrom('');
+      setOptionSquares({});
+    } catch (e) {
+      resetFirstMove(square);
+    }
+  }
+
   function onDrop(sourceSquare, targetSquare) {
     if (game.turn() === 'w' && myColor !== 'white') return false;
     if (game.turn() === 'b' && myColor !== 'black') return false;
     if (timeoutWinner || gameEndReason || game.isGameOver()) return false;
+
+    setMoveFrom('');
+    setOptionSquares({});
 
     const gameCopy = new Chess(game.fen());
     try {
@@ -225,10 +296,6 @@ export default function ChessRoom() {
       setGame(gameCopy);
       socket.emit('chessMove', { roomId, move, fen: gameCopy.fen(), pgn: gameCopy.pgn() });
       
-      if (gameCopy.isGameOver()) {
-         // The game is over locally due to this move, let's notify the server implicitly or let the game loop handle it.
-         // chess.js handles it locally, so we don't necessarily need a server emit, but we could.
-      }
       return true;
     } catch (e) {
       return false;
@@ -391,10 +458,12 @@ export default function ChessRoom() {
           <Chessboard 
             position={game.fen()} 
             onPieceDrop={onDrop} 
+            onSquareClick={onSquareClick}
             boardOrientation={myColor}
             boardWidth={boardWidth}
             customDarkSquareStyle={{ backgroundColor: '#26353f' }}
             customLightSquareStyle={{ backgroundColor: '#33414e' }}
+            customSquareStyles={optionSquares}
             customPieces={customPieces}
             animationDuration={200}
           />
