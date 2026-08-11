@@ -461,8 +461,8 @@ export default function ChessRoom() {
             onSquareClick={onSquareClick}
             boardOrientation={myColor}
             boardWidth={boardWidth}
-            customDarkSquareStyle={{ backgroundColor: '#26353f' }}
-            customLightSquareStyle={{ backgroundColor: '#33414e' }}
+            customDarkSquareStyle={{ backgroundColor: '#739552' }}
+            customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
             customSquareStyles={optionSquares}
             customPieces={customPieces}
             animationDuration={200}
