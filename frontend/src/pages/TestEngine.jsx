@@ -107,12 +107,15 @@ export default function TestEngine() {
           }
           setTestData(parsedData);
           setGameMode(data.game_mode);
-          setAnswers(JSON.parse(data.answers || '{}'));
-          setStatusMap(JSON.parse(data.status_map || '{}'));
+          const searchParams = new URLSearchParams(window.location.search);
+          const isClean = searchParams.get('clean') === 'true';
+
+          setAnswers(isClean ? {} : JSON.parse(data.answers || '{}'));
+          setStatusMap(isClean ? {} : JSON.parse(data.status_map || '{}'));
           setScoreData({
-            correct: data.correct,
-            incorrect: data.incorrect,
-            unattempted: data.unattempted,
+            correct: isClean ? 0 : data.correct,
+            incorrect: isClean ? 0 : data.incorrect,
+            unattempted: isClean ? data.total_questions : data.unattempted,
             total: data.total_questions,
             marks: data.score,
             mc: parsedData.blueprint?.marks_correct || 1,
@@ -134,7 +137,11 @@ export default function TestEngine() {
                })
                .catch(e => console.error(e));
           }
-          setSearchParams({ view: 'review' });
+          setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.set('view', 'review');
+            return newParams;
+          });
         })
         .catch(err => {
           console.error(err);

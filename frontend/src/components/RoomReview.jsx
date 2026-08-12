@@ -3,7 +3,7 @@ import { ArrowLeft, Users, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') : '';
-export default function RoomReview({ sessionId, onBack }) {
+export default function RoomReview({ sessionId, onBack, currentUser }) {
   const [roomData, setRoomData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('leaderboard'); // 'leaderboard' or 'questions'
@@ -121,7 +121,9 @@ export default function RoomReview({ sessionId, onBack }) {
           <button 
             onClick={() => {
               if (roomData.length > 0) {
-                navigate(`/review/${roomData[0].id}`);
+                const myData = roomData.find(d => d.user_id === currentUser?.id);
+                const targetId = myData ? myData.id : roomData[0].id;
+                navigate(`/review/${targetId}${!myData ? '?clean=true' : ''}`);
               }
             }}
             style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: activeTab === 'questions' ? 'var(--accent-color)' : 'var(--surface-color)', color: activeTab === 'questions' ? '#fff' : 'var(--text-primary)' }}
