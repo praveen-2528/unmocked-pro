@@ -18,12 +18,13 @@ import Leaderboard from './pages/Leaderboard';
 import Settings from './pages/Settings';
 import ChessLobby from './pages/ChessLobby';
 import ChessRoom from './pages/ChessRoom';
+import QuizDuel from './pages/QuizDuel';
 
 function App() {
   const location = useLocation();
   const user = useAuthStore(state => state.user);
   
-  const isTestUI = location.pathname.startsWith('/test') || location.pathname.startsWith('/review');
+  const isTestUI = location.pathname.startsWith('/test') || location.pathname.startsWith('/review') || location.pathname.startsWith('/quiz-duel');
   const isAuth = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/reset-password';
   const showGlobalUI = !isTestUI && !isAuth;
 
@@ -55,6 +56,7 @@ function App() {
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/chess" element={<ChessLobby />} />
       <Route path="/chess/:roomId" element={<ChessRoom />} />
+      <Route path="/quiz-duel" element={<QuizDuel />} />
       <Route path="/test/:sessionId" element={<TestEngine />} />
       <Route path="/test" element={<TestEngine />} />
       <Route path="/review/:resultId" element={<TestEngine />} />

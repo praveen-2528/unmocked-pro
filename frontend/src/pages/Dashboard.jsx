@@ -49,6 +49,10 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [copiedSection, setCopiedSection] = useState(null);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [quizDuelTopics, setQuizDuelTopics] = useState('');
+  const [quizDuelCount, setQuizDuelCount] = useState(10);
+  const [quizDuelData, setQuizDuelData] = useState('');
+  const [quizDuelParsed, setQuizDuelParsed] = useState(null);
   
   // Multiplayer State
   const [playMode, setPlayMode] = useState('Solo'); // 'Solo', 'Multiplayer'
@@ -753,6 +757,90 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to share to group'); }
   };
 
+  const generateQuizDuelPrompt = () => {
+    const topics = quizDuelTopics || 'General Knowledge';
+    const count = quizDuelCount || 10;
+    
+    let prompt = `Generate exactly ${count} quick-fire multiple-choice quiz questions for a rapid-fire quiz game.\n\n`;
+    prompt += `TOPICS TO COVER: ${topics}\n\n`;
+    prompt += `QUESTION STYLE:\n`;
+    prompt += `- Short, punchy questions testing factual recall and quick thinking\n`;
+    prompt += `- Focus on: percentages to fractions, formulas, dates, facts, conversions, definitions\n`;
+    prompt += `- Each question should be answerable in under 15 seconds\n`;
+    prompt += `- Difficulty: Easy to Medium (for leisure/casual play)\n`;
+    prompt += `- Distractors should be plausible but clearly distinguishable from the correct answer\n\n`;
+    prompt += `FORMAT RULES:\n`;
+    prompt += `1. Each question MUST have exactly 4 options\n`;
+    prompt += `2. Only ONE option is correct\n`;
+    prompt += `3. Output STRICTLY as Pipe-Separated Values (|) format\n`;
+    prompt += `4. Do NOT include any conversational text before or after\n`;
+    prompt += `5. Append "###" at the end of EVERY row\n`;
+    prompt += `6. Use this EXACT row format:\n`;
+    prompt += `Q||[Question Text]|[Option A]|[Option B]|[Option C]|[Option D]|[Correct Option Letter]|[Detailed Explanation. Tip to remember: ...]###\n\n`;
+    prompt += `EXAMPLE:\n`;
+    prompt += `Q||What is 12.5% as a fraction?|1/8|1/6|1/4|1/12|A|12.5% is exactly half of 25% (which is 1/4). Tip to remember: 100 divided by 12.5 is 8.###\n`;
+    prompt += `Q||What is the chemical symbol for Gold?|Gd|Go|Au|Ag|C|The symbol comes from its Latin name "Aurum". Tip to remember: "A u" return my gold!###\n`;
+    prompt += `Q||Area of a circle with radius r is?|2πr|πr²|πd|2πr²|B|The area is π times the radius squared. Tip to remember: Area is squared (r²), circumference is linear (2πr).###\n\n`;
+    prompt += `Generate exactly ${count} questions now. No headers, just the raw PSV rows. Ensure the explanation is detailed and always includes a "Tip to remember".`;
+    
+    return prompt;
+  };
+
+  const handleQuizDuelParse = () => {
+    try {
+      const raw = quizDuelData.trim();
+      if (!raw) { setError('Please paste the AI response first.'); return; }
+      
+      const rows = raw.split('###').map(r => r.trim()).filter(r => r.length > 0);
+      const questions = [];
+      
+      for (const row of rows) {
+        const parts = row.split('|');
+        if (parts.length < 8) continue;
+        if (parts[0].trim() !== 'Q') continue;
+        
+        const text = parts[2]?.trim();
+        const optA = parts[3]?.trim();
+        const optB = parts[4]?.trim();
+        const optC = parts[5]?.trim();
+        const optD = parts[6]?.trim();
+        const answer = parts[7]?.trim()?.toUpperCase();
+        const explanation = parts[8]?.trim() || '';
+        
+        if (!text || !optA || !optB || !optC || !optD || !['A','B','C','D'].includes(answer)) continue;
+        
+        questions.push({
+          id: `qd-${questions.length + 1}`,
+          text,
+          options: [optA, optB, optC, optD],
+          answer,
+          explanation
+        });
+      }
+      
+      if (questions.length === 0) {
+        setError('No valid questions found. Please check the format.');
+        return;
+      }
+      
+      const quizData = {
+        topics: quizDuelTopics || 'General Knowledge',
+        questionCount: questions.length,
+        questions
+      };
+      
+      setQuizDuelParsed(quizData);
+      setError('');
+    } catch (e) {
+      setError('Failed to parse quiz data: ' + e.message);
+    }
+  };
+
+  const launchQuizDuel = () => {
+    localStorage.setItem('quiz_duel_data', JSON.stringify(quizDuelParsed));
+    navigate('/quiz-duel');
+  };
+
   if (step > 1 && step < 5 && !selectedBp) {
     return (
       <div className="dashboard-container flex-center">
@@ -802,6 +890,100 @@ export default function Dashboard() {
 
         {step === 7 && (
           <GlobalRoomReviews currentUser={currentUser} onBack={() => setStep(0)} />
+        )}
+
+        {step === 8 && (
+          <div className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div>
+                <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>⚡ Quick Quiz Duel Setup</h2>
+                <p style={{ color: 'var(--text-secondary)' }}>Set up a split-screen quiz battle for 2 players on one device.</p>
+              </div>
+              <button className="btn btn-glass" onClick={() => setStep(0)}>Cancel</button>
+            </div>
+
+            {!quizDuelParsed ? (
+              <div className="glass-panel" style={{ padding: '32px' }}>
+                {/* Step 1: Topics */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', display: 'block' }}>📝 Topics to quiz on</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. Percentage to Fractions, Trigonometry Formulas, Indian History, Chemical Symbols..."
+                    value={quizDuelTopics}
+                    onChange={e => setQuizDuelTopics(e.target.value)}
+                    style={{ fontSize: '1rem', padding: '14px 16px' }}
+                  />
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>Separate multiple topics with commas</p>
+                </div>
+
+                {/* Step 2: Question Count - Fully Custom */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', display: 'block' }}>🔢 Number of Questions</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    min={3}
+                    max={50}
+                    value={quizDuelCount}
+                    onChange={e => setQuizDuelCount(Math.max(3, Math.min(50, parseInt(e.target.value) || 3)))}
+                    style={{ width: '120px', fontSize: '1.1rem', padding: '12px 16px', textAlign: 'center' }}
+                  />
+                  <span style={{ marginLeft: '12px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Min 3, Max 50</span>
+                </div>
+
+                {/* Step 3: Generated Prompt */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>🤖 AI Prompt</label>
+                    <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generateQuizDuelPrompt()); setCopiedSection('quizduel'); setTimeout(() => setCopiedSection(null), 2000); }} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                      {copiedSection === 'quizduel' ? '✓ Copied!' : '📋 Copy Prompt'}
+                    </button>
+                  </div>
+                  <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', maxHeight: '150px', overflowY: 'auto' }}>
+                    {generateQuizDuelPrompt()}
+                  </pre>
+                </div>
+
+                {/* Step 4: Paste Response */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '8px', display: 'block' }}>📥 Paste AI Response</label>
+                  <textarea
+                    className="input-field"
+                    placeholder="Paste the AI-generated quiz questions here (Pipe-Separated Values ending with ###)..."
+                    value={quizDuelData}
+                    onChange={e => setQuizDuelData(e.target.value)}
+                    rows={8}
+                    style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '0.85rem', background: 'rgba(0,0,0,0.3)' }}
+                  />
+                </div>
+
+                {error && <p style={{ color: 'var(--danger-color)', marginBottom: '16px', fontSize: '0.9rem' }}>{error}</p>}
+
+                <button className="btn btn-primary" onClick={handleQuizDuelParse} style={{ padding: '12px 28px', fontSize: '1rem', width: '100%', background: 'linear-gradient(135deg, #06b6d4, #f472b6)', border: 'none' }}>
+                  Parse & Validate Questions
+                </button>
+              </div>
+            ) : (
+              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                <h3 className="geist-pixel" style={{ fontSize: '1.3rem', marginBottom: '8px' }}>Quiz Ready!</h3>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  <strong>{quizDuelParsed.questions.length}</strong> questions on <strong>{quizDuelParsed.topics}</strong>
+                </p>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                  Grab a friend, hold the device between you, and start the duel!
+                </p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                  <button className="btn btn-glass" onClick={() => setQuizDuelParsed(null)}>← Edit Questions</button>
+                  <button className="btn btn-primary" onClick={launchQuizDuel} style={{ padding: '12px 32px', fontSize: '1.1rem', background: 'linear-gradient(135deg, #06b6d4, #f472b6)', border: 'none' }}>
+                    🚀 Launch Quiz Duel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {step === 0 && (
@@ -862,7 +1044,16 @@ export default function Dashboard() {
               </div>
             </div>
 
-
+            <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', marginBottom: '32px', borderLeft: '4px solid #f472b6' }}>
+              <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>⚡</span>
+              <h2 className="geist-pixel" style={{ fontSize: '1.4rem', marginBottom: '12px' }}>Quick Quiz Duel</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', maxWidth: '500px', margin: '0 auto 20px auto', fontSize: '0.95rem' }}>
+                Face off on one device! A split-screen quiz for 2 players — perfect for learning facts, formulas & GK during leisure time.
+              </p>
+              <button className="btn btn-primary" onClick={() => setStep(8)} style={{ padding: '10px 24px', fontSize: '1rem', background: 'linear-gradient(135deg, #06b6d4, #f472b6)', border: 'none' }}>
+                Start Quiz Duel <ArrowRight size={18} />
+              </button>
+            </div>
 
             <TiltWrapper>
             <div className="glass-panel" style={{ padding: '24px', marginBottom: '32px' }}>
