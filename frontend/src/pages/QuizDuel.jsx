@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import './QuizDuel.css';
 
 const QuizDuel = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [quizData, setQuizData] = useState(null);
   const [phase, setPhase] = useState('ready');
@@ -36,6 +37,23 @@ const QuizDuel = () => {
 
   useEffect(() => {
     try {
+      const reviewId = searchParams.get('reviewId');
+      if (reviewId) {
+        const histStr = localStorage.getItem('quiz_duel_match_history');
+        if (histStr) {
+          const histArr = JSON.parse(histStr);
+          const match = histArr.find(m => m.id === reviewId);
+          if (match) {
+            setPlayer1Score(match.p1Score);
+            setPlayer2Score(match.p2Score);
+            setHistory(match.history);
+            setQuizData({ questions: [] }); // Dummy to bypass error screen
+            setPhase('review');
+            return;
+          }
+        }
+      }
+
       const dataStr = localStorage.getItem('quiz_duel_data');
       if (dataStr) {
         const data = JSON.parse(dataStr);
@@ -48,7 +66,36 @@ const QuizDuel = () => {
       console.error('Failed to parse quiz duel data', e);
     }
     setQuizData(null);
-  }, []);
+  }, [searchParams]);
+
+  // LaTeX support via MathJax
+  useEffect(() => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise().catch((err) => console.error('MathJax error:', err));
+    }
+  }, [currentQuestionIndex, phase, quizData, history]);
+
+  // Save match history when game over
+  useEffect(() => {
+    if (phase === 'gameover' && quizData) {
+      try {
+        const prevStr = localStorage.getItem('quiz_duel_match_history');
+        const historyArr = prevStr ? JSON.parse(prevStr) : [];
+        historyArr.unshift({
+          id: `qd-${Date.now()}`,
+          date: new Date().toISOString(),
+          topics: quizData.topics || 'General Knowledge',
+          p1Score: player1Score,
+          p2Score: player2Score,
+          questionsCount: quizData.questions.length,
+          history: history
+        });
+        localStorage.setItem('quiz_duel_match_history', JSON.stringify(historyArr));
+      } catch (e) {
+        console.error('Failed to save quiz duel history', e);
+      }
+    }
+  }, [phase]); // Only run when phase becomes gameover
 
   useEffect(() => {
     if (phase === 'ready' && player1Ready && player2Ready) {

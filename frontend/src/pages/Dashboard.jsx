@@ -937,7 +937,23 @@ export default function Dashboard() {
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>🤖 AI Prompt</label>
-                    <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generateQuizDuelPrompt()); setCopiedSection('quizduel'); setTimeout(() => setCopiedSection(null), 2000); }} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                    <button className="btn btn-primary" onClick={() => { 
+                      const text = generateQuizDuelPrompt();
+                      if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(text);
+                      } else {
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        textArea.style.position = "absolute";
+                        textArea.style.left = "-999999px";
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        try { document.execCommand('copy'); } catch (e) { console.error(e); }
+                        document.body.removeChild(textArea);
+                      }
+                      setCopiedSection('quizduel'); 
+                      setTimeout(() => setCopiedSection(null), 2000); 
+                    }} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
                       {copiedSection === 'quizduel' ? '✓ Copied!' : '📋 Copy Prompt'}
                     </button>
                   </div>
