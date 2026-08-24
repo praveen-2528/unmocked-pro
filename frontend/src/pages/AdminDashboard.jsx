@@ -89,6 +89,30 @@ export default function AdminDashboard() {
     } catch (err) { console.error(err); }
   };
 
+  const [openRouterKey, setOpenRouterKey] = useState('');
+  
+  const fetchOpenRouterKey = async () => {
+    try {
+      const res = await fetch('/api/settings/openrouter_key');
+      if (res.ok) {
+        const data = await res.json();
+        setOpenRouterKey(data.key);
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleSaveOpenRouterKey = async () => {
+    try {
+      const res = await fetch('/api/admin/settings/openrouter_key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.id },
+        body: JSON.stringify({ key: openRouterKey })
+      });
+      if (res.ok) alert('API Key saved successfully!');
+      else alert('Failed to save API Key');
+    } catch (err) { console.error(err); }
+  };
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === 'users') fetchUsers();
@@ -97,6 +121,7 @@ export default function AdminDashboard() {
     else if (tab === 'rooms') fetchRooms();
     else if (tab === 'tests') fetchTests();
     else if (tab === 'history-rooms') fetchHistoryRooms();
+    else if (tab === 'api-settings') fetchOpenRouterKey();
   };
 
   // Blueprint Form Logic
@@ -215,6 +240,9 @@ export default function AdminDashboard() {
           </button>
           <button className={`btn ${activeTab === 'system' ? 'btn-primary' : 'btn-glass'}`} onClick={() => handleTabChange('system')}>
             <Settings size={18} /> System Info
+          </button>
+          <button className={`btn ${activeTab === 'api-settings' ? 'btn-primary' : 'btn-glass'}`} onClick={() => handleTabChange('api-settings')}>
+            <Key size={18} /> API Settings
           </button>
         </div>
 
@@ -473,6 +501,28 @@ export default function AdminDashboard() {
                 <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>{systemInfo.loadAvg.map(l => l.toFixed(2)).join(', ')}</div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* API Settings Content */}
+        {!viewingRoomId && activeTab === 'api-settings' && (
+          <div className="animate-fade-in glass-panel" style={{ padding: '24px' }}>
+            <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '24px' }}>Global API Settings</h2>
+            <div style={{ marginBottom: '24px' }}>
+              <label className="input-label">OpenRouter API Key</label>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>This key will be used by all users on the platform to auto-generate mock tests.</p>
+              <input 
+                type="password" 
+                className="input-field" 
+                style={{ maxWidth: '400px' }}
+                value={openRouterKey} 
+                onChange={e => setOpenRouterKey(e.target.value)} 
+                placeholder="sk-or-v1-..."
+              />
+            </div>
+            <button className="btn btn-primary" onClick={handleSaveOpenRouterKey}>
+              Save Settings
+            </button>
           </div>
         )}
       </div>

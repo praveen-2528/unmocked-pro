@@ -214,6 +214,29 @@ const isAdmin = (req, res, next) => {
 
 // --- Admin Endpoints ---
 
+app.get('/api/settings/openrouter_key', (req, res) => {
+  db.get("SELECT value FROM global_settings WHERE key = 'openrouter_key'", (err, row) => {
+    if (err) return res.json({ key: '' }); // gracefully return empty if table doesn't exist yet
+    res.json({ key: row ? row.value : '' });
+  });
+});
+
+app.post('/api/admin/settings/openrouter_key', isAdmin, (req, res) => {
+  const { key } = req.body;
+  db.run("CREATE TABLE IF NOT EXISTS global_settings (key TEXT PRIMARY KEY, value TEXT)", (createErr) => {
+    if (createErr) return res.status(500).json({ error: createErr.message });
+    
+    db.run(
+      "REPLACE INTO global_settings (key, value) VALUES ('openrouter_key', ?)",
+      [key],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Settings updated' });
+      }
+    );
+  });
+});
+
 // Blueprints CRUD
 app.get('/api/admin/blueprints', isAdmin, (req, res) => {
   db.all('SELECT * FROM blueprints ORDER BY created_at DESC', (err, rows) => {

@@ -143,3 +143,13 @@ h1, h2, h3, h4, h5, h6, .geist-pixel {
     border-radius: 12px;
   }
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes waterWave {
+  0% { transform: translate(-50%, 0) rotate(0deg); }
+  100% { transform: translate(-50%, 0) rotate(360deg); }
+}

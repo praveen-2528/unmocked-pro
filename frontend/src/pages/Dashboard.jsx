@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check, Pause, Trash2, MessageCircle, Send, XCircle } from "lucide-react";
+import { BookOpen, Clock, Settings, Users, ArrowRight, Play, ArrowLeft, FileText, CheckCircle2, ChevronRight, Copy, AlertCircle, Edit2, Check, Pause, Trash2, MessageCircle, Send, XCircle, RefreshCw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { socket } from '../socket';
+import { sscFacts as loadingFacts } from '../utils/sscFacts';
 import GlobalRoomReviews from '../components/GlobalRoomReviews';
 import useAuthStore from '../store/useAuthStore';
 import useChatStore from '../store/useChatStore';
 import Tilt from 'react-parallax-tilt';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const TiltWrapper = ({ children }) => (
   <Tilt tiltMaxAngleX={2} tiltMaxAngleY={2} glareEnable={true} glareMaxOpacity={0.1} glarePosition="all" scale={1.01} transitionSpeed={1500} tiltReverse={true}>
@@ -49,10 +50,15 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [copiedSection, setCopiedSection] = useState(null);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [openRouterApiKey, setOpenRouterApiKey] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(null);
   const [quizDuelTopics, setQuizDuelTopics] = useState('');
   const [quizDuelCount, setQuizDuelCount] = useState(10);
   const [quizDuelData, setQuizDuelData] = useState('');
   const [quizDuelParsed, setQuizDuelParsed] = useState(null);
+  
+  // Loading Facts State
+  const [loadingFactIndex, setLoadingFactIndex] = useState(0);
   
   // Multiplayer State
   const [playMode, setPlayMode] = useState('Solo'); // 'Solo', 'Multiplayer'
@@ -76,6 +82,11 @@ export default function Dashboard() {
       navigate('/');
     } else {
       fetchBlueprints();
+      fetch('/api/settings/openrouter_key')
+        .then(res => res.json())
+        .then(data => setOpenRouterApiKey(data.key))
+        .catch(console.error);
+
       if (currentUser.id) {
         fetch(`/api/test-results/${currentUser.id}`)
           .then(res => res.json())
@@ -110,7 +121,20 @@ export default function Dashboard() {
         }
       }
     }
+  }, [currentUser.email, navigate]);
 
+  useEffect(() => {
+    let interval;
+    if (isGeneratingAI) {
+      setLoadingFactIndex(Math.floor(Math.random() * loadingFacts.length));
+      interval = setInterval(() => {
+        setLoadingFactIndex(Math.floor(Math.random() * loadingFacts.length));
+      }, 7000);
+    }
+    return () => clearInterval(interval);
+  }, [isGeneratingAI]);
+
+  useEffect(() => {
     socket.on('roomCreated', (data) => {
       setLobbyData(data);
       setActiveRoomCode(data.code);
@@ -337,6 +361,67 @@ export default function Dashboard() {
     
     setCopiedSection(subjectName);
     setTimeout(() => setCopiedSection(null), 2000);
+  };
+
+  const handleAutoGenerate = async (subjectName, qCount, isQuizDuel = false) => {
+    if (!openRouterApiKey) {
+      alert("OpenRouter API Key is not set by the Admin. Please configure it in the Admin Dashboard.");
+      return;
+    }
+    
+    const promptText = isQuizDuel ? generateQuizDuelPrompt() : generatePrompt(subjectName, qCount);
+    setIsGeneratingAI(isQuizDuel ? 'quizduel' : subjectName);
+    setError('');
+    
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "stealth/ox-alpha",
+          messages: [{ role: "user", content: promptText }],
+          stream: false
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setError(`AI Error: Auto-generation failed (${errorData.error?.message || 'Status ' + response.status}). The model is currently unavailable or busy. Please use the "Copy AI Prompt" method instead.`);
+        setIsGeneratingAI(null);
+        return;
+      }
+
+      const data = await response.json();
+      let fullText = data.choices[0]?.message?.content || "";
+
+      if (isQuizDuel) {
+        setQuizDuelData(fullText);
+      } else {
+        setSectionData(prev => ({ ...prev, [subjectName]: fullText }));
+      }
+
+      if (fullText.includes("```")) {
+         const blocks = fullText.split("```");
+         if (blocks.length >= 3) {
+           let cleanText = blocks[1];
+           if (cleanText.startsWith("csv\n") || cleanText.startsWith("text\n")) {
+              cleanText = cleanText.substring(cleanText.indexOf('\n') + 1);
+           }
+           if (isQuizDuel) {
+             setQuizDuelData(cleanText.trim());
+           } else {
+             setSectionData(prev => ({ ...prev, [subjectName]: cleanText.trim() }));
+           }
+         }
+      }
+    } catch (e) {
+      console.error(e);
+      setError("Failed to reach OpenRouter API. The model is currently unavailable or you are offline. Please use the 'Copy AI Prompt' method instead.");
+    }
+    setIsGeneratingAI(null);
   };
 
   const parseRawCsv = (csvString, expectedCols) => {
@@ -701,11 +786,16 @@ export default function Dashboard() {
               <CheckCircle2 size={18} style={{ color: 'var(--accent-color)' }} />
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {isExpanded && (
-              <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); handleCopyPrompt(title, count); }} style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {copiedSection === title ? <><CheckCircle2 size={16} /> Copied Prompt</> : <><Copy size={16} /> Copy AI Prompt</>}
-              </button>
+              <>
+                <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); handleCopyPrompt(title, count); }} style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {copiedSection === title ? <><CheckCircle2 size={16} /> Copied Prompt</> : <><Copy size={16} /> Copy AI Prompt</>}
+                </button>
+                <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); handleAutoGenerate(title, count); }} disabled={isGeneratingAI === title} style={{ padding: '8px 16px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent-color)', color: '#000', border: 'none' }}>
+                  {isGeneratingAI === title ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Generating...</> : <><Play size={16} /> ✨ Auto-Generate</>}
+                </button>
+              </>
             )}
             {testMode === 'Full' && (
               <ChevronRight size={20} style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--text-secondary)' }} />
@@ -850,9 +940,79 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
-      <motion.div 
-        initial={{ opacity: 0, y: 20, scale: 0.98 }} 
+    <>
+      <AnimatePresence>
+        {isGeneratingAI && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(5, 5, 10, 0.95)',
+              zIndex: 9999,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ position: 'relative', zIndex: 1, maxWidth: '800px', width: '90%', textAlign: 'center' }}>
+              <div style={{ marginBottom: '40px' }}>
+                <h2 className="geist-pixel" style={{ fontSize: '2.5rem', marginBottom: '16px', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Generating AI Content...</h2>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} style={{ width: '12px', height: '12px', background: '#f472b6', borderRadius: '50%' }} />
+                  <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} style={{ width: '12px', height: '12px', background: '#a855f7', borderRadius: '50%' }} />
+                  <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} style={{ width: '12px', height: '12px', background: '#06b6d4', borderRadius: '50%' }} />
+                </div>
+              </div>
+              
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={loadingFactIndex}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  style={{
+                    background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95))',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(148, 163, 184, 0.2)',
+                    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                    padding: '48px',
+                    borderRadius: '24px',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Subtle glow behind the fact */}
+                  <div style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '4px', background: 'linear-gradient(90deg, #f472b6, #a855f7, #06b6d4)' }} />
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%)', zIndex: 0 }} />
+                  
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ fontSize: '1.1rem', color: '#a855f7', marginBottom: '20px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '4px' }}>
+                      SSC CGL FACT
+                    </div>
+                    <div style={{ fontSize: '1.8rem', color: '#f8fafc', lineHeight: 1.6, fontWeight: '500', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                      {loadingFacts[loadingFactIndex]}
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+        <motion.div 
+          initial={{ opacity: 0, y: 20, scale: 0.98 }} 
         animate={{ opacity: 1, y: 0, scale: 1 }} 
         transition={{ duration: 0.5, ease: "easeOut" }}
         style={{ position: 'relative', zIndex: 10, minHeight: '100vh' }}
@@ -934,28 +1094,34 @@ export default function Dashboard() {
                 </div>
 
                 {/* Step 3: Generated Prompt */}
+
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>🤖 AI Prompt</label>
-                    <button className="btn btn-primary" onClick={() => { 
-                      const text = generateQuizDuelPrompt();
-                      if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(text);
-                      } else {
-                        const textArea = document.createElement("textarea");
-                        textArea.value = text;
-                        textArea.style.position = "absolute";
-                        textArea.style.left = "-999999px";
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        try { document.execCommand('copy'); } catch (e) { console.error(e); }
-                        document.body.removeChild(textArea);
-                      }
-                      setCopiedSection('quizduel'); 
-                      setTimeout(() => setCopiedSection(null), 2000); 
-                    }} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                      {copiedSection === 'quizduel' ? '✓ Copied!' : '📋 Copy Prompt'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-primary" onClick={() => { 
+                        const text = generateQuizDuelPrompt();
+                        if (navigator.clipboard && window.isSecureContext) {
+                          navigator.clipboard.writeText(text);
+                        } else {
+                          const textArea = document.createElement("textarea");
+                          textArea.value = text;
+                          textArea.style.position = "absolute";
+                          textArea.style.left = "-999999px";
+                          document.body.appendChild(textArea);
+                          textArea.select();
+                          try { document.execCommand('copy'); } catch (e) { console.error(e); }
+                          document.body.removeChild(textArea);
+                        }
+                        setCopiedSection('quizduel'); 
+                        setTimeout(() => setCopiedSection(null), 2000); 
+                      }} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                        {copiedSection === 'quizduel' ? '✓ Copied!' : '📋 Copy Prompt'}
+                      </button>
+                      <button className="btn btn-primary" onClick={() => handleAutoGenerate(null, null, true)} disabled={isGeneratingAI === 'quizduel'} style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-color)', color: '#000', border: 'none' }}>
+                        {isGeneratingAI === 'quizduel' ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Generating...</> : <><Play size={14} /> ✨ Auto-Generate</>}
+                      </button>
+                    </div>
                   </div>
                   <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', maxHeight: '150px', overflowY: 'auto' }}>
                     {generateQuizDuelPrompt()}
@@ -1425,10 +1591,11 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
                 <h2 className="geist-pixel" style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Generate & Input Data</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Copy the prompt for each section and paste the AI's response below.</p>
+                <p style={{ color: 'var(--text-secondary)' }}>Copy the prompt for each section and paste the AI's response below, or use an API Key to auto-generate.</p>
               </div>
               <button className="btn btn-glass" onClick={() => setStep(2)}>Back</button>
             </div>
+
 
             {error && (
               <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger-color)', color: '#fca5a5', padding: '16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -1673,5 +1840,6 @@ export default function Dashboard() {
       </main>
     </motion.div>
     </div>
+    </>
   );
 }
