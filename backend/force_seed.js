@@ -16,6 +16,18 @@ const seedExams = [
     { name: 'Quantitative Aptitude', questions: 25, duration: 15, topics: ['Algebra', 'Geometry', 'Trigonometry', 'Data Interpretation', 'Profit and Loss', 'Time and Work', 'Percentages', 'Mensuration'] },
     { name: 'General Awareness', questions: 25, duration: 15, topics: ['Current Affairs', 'History', 'Geography', 'Indian Polity', 'Economics', 'General Science', 'Static GK', 'Books & Authors'] }
   ]},
+  { id: 'SSC-CGL-T2', name: 'SSC CGL Tier 2', duration: 120, options: 4, sectional: 1, marks_correct: 3.0, marks_incorrect: 1.0, sections: [
+    { name: 'Mathematical Abilities', questions: 30, duration: 30, topics: ['Number Systems', 'Fundamental Arithmetical Operations', 'Algebra', 'Geometry', 'Mensuration', 'Trigonometry', 'Statistics and Probability'] },
+    { name: 'Reasoning and General Intelligence', questions: 30, duration: 30, topics: ['Semantic Analogy', 'Symbolic operations', 'Symbolic/Number Analogy', 'Trends', 'Figural Analogy', 'Space Orientation', 'Semantic Classification', 'Venn Diagrams'] },
+    { name: 'English Language and Comprehension', questions: 45, duration: 30, topics: ['Vocabulary', 'Grammar', 'Sentence Structure', 'Synonyms', 'Antonyms', 'Spot the Error', 'Fill in the Blanks', 'Synonyms/Homonyms', 'Antonyms'] },
+    { name: 'General Awareness', questions: 25, duration: 30, topics: ['History', 'Culture', 'Geography', 'Economic Scene', 'General policy', 'Scientific research'] }
+  ]},
+  { id: 'SSC-CHSL-T2', name: 'SSC CHSL Tier 2', duration: 120, options: 4, sectional: 1, marks_correct: 3.0, marks_incorrect: 1.0, sections: [
+    { name: 'Mathematical Abilities', questions: 30, duration: 30, topics: ['Number Systems', 'Fundamental Arithmetical Operations', 'Algebra', 'Geometry', 'Mensuration', 'Trigonometry', 'Statistics and Probability'] },
+    { name: 'Reasoning and General Intelligence', questions: 30, duration: 30, topics: ['Semantic Analogy', 'Symbolic operations', 'Symbolic/Number Analogy', 'Trends', 'Figural Analogy', 'Space Orientation', 'Semantic Classification', 'Venn Diagrams'] },
+    { name: 'English Language and Comprehension', questions: 40, duration: 30, topics: ['Vocabulary', 'Grammar', 'Sentence Structure', 'Synonyms', 'Antonyms', 'Spot the Error', 'Fill in the Blanks'] },
+    { name: 'General Awareness', questions: 20, duration: 30, topics: ['History', 'Culture', 'Geography', 'Economic Scene', 'General policy', 'Scientific research'] }
+  ]},
   { id: 'SSC-STENO', name: 'SSC Stenographer Grade C & D', duration: 120, options: 4, sectional: 1, marks_correct: 1.0, marks_incorrect: 0.25, sections: [
     { name: 'General Intelligence & Reasoning', questions: 50, duration: 30, topics: ['Analogies', 'Blood Relations', 'Syllogism', 'Coding-Decoding', 'Number Series', 'Direction Sense', 'Venn Diagrams', 'Non-Verbal Reasoning', 'Matrix'] },
     { name: 'General Awareness', questions: 50, duration: 30, topics: ['Current Affairs', 'History', 'Geography', 'Indian Polity', 'Economics', 'General Science', 'Static GK', 'Sports', 'Art & Culture'] },
@@ -80,5 +92,5 @@ db.serialize(() => {
     stmt.run(ex.id, ex.name, ex.duration, ex.options, ex.sectional, ex.marks_correct, ex.marks_incorrect, JSON.stringify(ex.sections));
   });
   stmt.finalize();
-  console.log('Successfully dropped old table and generated all 7 exams with dynamic marking!');
+  console.log(`Successfully dropped old table and generated all ${seedExams.length} exams with dynamic marking!`);
 });
