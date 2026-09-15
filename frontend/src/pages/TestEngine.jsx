@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Clock, CheckCircle2, AlertCircle, Bookmark, ChevronRight, XCircle, MessageCircle, BarChart2, Users, FastForward, Send } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, Bookmark, ChevronRight, XCircle, MessageCircle, BarChart2, Users, FastForward, Send, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { socket } from '../socket';
 import Results from '../components/Results';
 import DIChartRenderer from '../components/DIChartRenderer';
@@ -15,6 +16,8 @@ export default function TestEngine() {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentView = searchParams.get('view') || 'instructions';
   const [testData, setTestData] = useState(null);
+  const [isGrading, setIsGrading] = useState(false);
+  const [descriptiveFeedback, setDescriptiveFeedback] = useState({});
   
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -586,27 +589,100 @@ export default function TestEngine() {
     let incorrect = 0;
     let unattempted = 0;
     let total = 0;
+    let marks = 0;
+    let newDescriptiveFeedback = {};
     
-    testData.sections.forEach(sec => {
-      sec.questions.forEach(q => {
+    for (let sec of testData.sections) {
+      const mc = sec.marks_correct !== undefined ? sec.marks_correct : (testData.blueprint.marks_correct || 1.0);
+      const mi = sec.marks_incorrect !== undefined ? sec.marks_incorrect : (testData.blueprint.marks_incorrect || 0.25);
+      
+      for (let q of sec.questions) {
         total++;
         const userAns = answers[q.id];
-        if (!userAns) unattempted++;
-        else if (userAns === q.answer) correct++;
-        else incorrect++;
-      });
-    });
+        
+        if (q.options && q.options.length === 0) {
+           if (!userAns || userAns.trim() === '') {
+             unattempted++;
+             newDescriptiveFeedback[q.id] = { score: 0, maxScore: mc, feedback: 'No answer provided.' };
+           } else {
+             const variantStrings = q.answer.split(':::');
+             let maxAwarded = 0;
+             let bestHits = 0;
+             let bestTotal = 0;
+             let bestVariantIndex = 1;
+             
+             // SMART MEASURE 1: Normalize user answer (remove punctuation, pad with spaces for boundary checking)
+             const normalizedAns = " " + userAns.toLowerCase().replace(/[^\w\s]/gi, ' ') + " ";
+             
+             // SMART MEASURE 2: Word Count Penalty (prevent 1-sentence keyword spam)
+             const wordCount = userAns.split(/\s+/).filter(w => w).length;
+             let lengthPenalty = 1.0;
+             if (wordCount < 50) lengthPenalty = 0.5; // 50% penalty for short answers under 50 words
+             if (wordCount < 15) lengthPenalty = 0.1; // 90% penalty for just listing keywords without sentences
 
-    const mc = testData.blueprint.marks_correct || 1.0;
-    const mi = testData.blueprint.marks_incorrect || 0.25;
-    const marks = (correct * mc) - (incorrect * mi);
+             variantStrings.forEach((varStr, idx) => {
+               const keywords = varStr.split(',').map(k => k.trim().toLowerCase().replace(/[^\w\s]/gi, '')).filter(k => k);
+               let hits = 0;
+               
+               keywords.forEach(kw => {
+                 if (!kw) return;
+                 // SMART MEASURE 3: Exact match with Word Boundaries (prevents "fund" matching "fundamental")
+                 if (normalizedAns.includes(" " + kw + " ")) {
+                   hits++;
+                 } else {
+                   // SMART MEASURE 4: Suffix tolerance (Basic Stemming for -s, -es, -ed, -ing)
+                   if (normalizedAns.includes(" " + kw + "s ") ||
+                       normalizedAns.includes(" " + kw + "es ") ||
+                       normalizedAns.includes(" " + kw + "ed ") ||
+                       normalizedAns.includes(" " + kw + "ing ")) {
+                     hits++;
+                   }
+                 }
+               });
+               
+               let awarded = keywords.length > 0 ? (hits / keywords.length) * mc : 0;
+               awarded = awarded * lengthPenalty;
+               
+               if (awarded >= maxAwarded) {
+                 maxAwarded = awarded;
+                 bestHits = hits;
+                 bestTotal = keywords.length;
+                 bestVariantIndex = idx + 1;
+               }
+             });
+
+             marks += maxAwarded;
+             let feedbackStr = `Smart Grader: Best match Variant ${bestVariantIndex} (${bestHits}/${bestTotal} concepts).`;
+             if (lengthPenalty < 1.0) feedbackStr += ` [Penalty applied: Answer too short (${wordCount} words)]`;
+             
+             newDescriptiveFeedback[q.id] = { 
+               score: maxAwarded, 
+               maxScore: mc, 
+               feedback: feedbackStr
+             };
+           }
+        } else {
+           if (!userAns) {
+             unattempted++;
+           } else if (userAns === q.answer) {
+             correct++;
+             marks += mc;
+           } else {
+             incorrect++;
+             marks -= mi;
+           }
+        }
+      }
+    }
     
+    setDescriptiveFeedback(newDescriptiveFeedback);
+
     if (isMultiplayer) {
       socket.emit('submitStats', { 
         code: room.code, 
         userId: currentUser.id, 
         statsUpdate: { 
-          attempted: correct + incorrect, 
+          attempted: correct + incorrect + Object.keys(newDescriptiveFeedback).length, 
           skipped: unattempted, 
           right: correct, 
           wrong: incorrect, 
@@ -617,7 +693,7 @@ export default function TestEngine() {
       });
     }
 
-    setScoreData({ correct, incorrect, unattempted, total, marks, mc, mi });
+    setScoreData({ correct, incorrect, unattempted, total, marks, mc: testData.blueprint.marks_correct, mi: testData.blueprint.marks_incorrect });
     setIsSubmitted(true);
   };
 
@@ -1142,35 +1218,59 @@ export default function TestEngine() {
                       />
 
                       <div className="te-options-list">
-                      {currentQuestion.options.map((opt, i) => {
-                          const letter = optionsLetters[i];
-                          const isSelected = answers[currentQuestion.id] === letter;
-                          const isRevealed = friendlyRevealed[currentQuestion.id] === true || reviewMode;
-                          const isCorrect = isRevealed && letter === currentQuestion.answer;
-                          const isWrongSelected = isRevealed && isSelected && letter !== currentQuestion.answer;
-                          const isWaiting = friendlyRevealed[currentQuestion.id] === 'waiting';
-
-                          let optionClass = `te-option-item ${isSelected ? 'selected' : ''}`.trim();
-                          if (isRevealed) {
-                              if (isCorrect) optionClass += ' reveal-correct';
-                              else if (isWrongSelected) optionClass += ' reveal-incorrect';
-                          }
-
-                          return (
-                              <label 
-                                  key={i}
-                                  className={optionClass}
-                                  onClick={() => {
-                                      if (!isRevealed && !isWaiting && !reviewMode) setAnswers(prev => ({ ...prev, [currentQuestion.id]: letter }));
+                      {currentQuestion.options && currentQuestion.options.length === 0 ? (
+                          <div style={{ width: '100%', marginTop: '1rem' }}>
+                              <textarea
+                                  className="te-descriptive-textarea"
+                                  placeholder="Type your descriptive answer here..."
+                                  value={answers[currentQuestion.id] || ''}
+                                  readOnly={isSubmitted || reviewMode}
+                                  onChange={(e) => {
+                                      if (!isSubmitted && !reviewMode) setAnswers(prev => ({ ...prev, [currentQuestion.id]: e.target.value }));
                                   }}
-                              >
-                                  <input type="radio" className="te-option-radio" checked={isSelected} readOnly />
-                                  <div className="math-inline-force" dangerouslySetInnerHTML={{ __html: formatHtml(opt) }} />
-                                  {isCorrect && <CheckCircle2 size={20} color="#1abc9c" style={{ marginLeft: 'auto' }} />}
-                                  {isWrongSelected && <XCircle size={20} color="#e74c3c" style={{ marginLeft: 'auto' }} />}
-                              </label>
-                          );
-                      })}
+                                  style={{ width: '100%', minHeight: '200px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '1rem', resize: 'vertical', background: (isSubmitted || reviewMode) ? '#f8fafc' : 'white' }}
+                              />
+                              {(reviewMode || isSubmitted) && descriptiveFeedback[currentQuestion.id] && (
+                                  <div style={{ marginTop: '1rem', padding: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
+                                      <h4 style={{ margin: '0 0 8px 0', color: '#991b1b' }}>AI Grading Results</h4>
+                                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#b91c1c', marginBottom: '8px' }}>
+                                          Score: {descriptiveFeedback[currentQuestion.id].score.toFixed(2)} / {descriptiveFeedback[currentQuestion.id].maxScore}
+                                      </div>
+                                      <p style={{ margin: 0, color: '#7f1d1d' }}>{descriptiveFeedback[currentQuestion.id].feedback}</p>
+                                  </div>
+                              )}
+                          </div>
+                      ) : (
+                          currentQuestion.options.map((opt, i) => {
+                           const letter = optionsLetters[i];
+                           const isSelected = answers[currentQuestion.id] === letter;
+                           const isRevealed = friendlyRevealed[currentQuestion.id] === true || reviewMode;
+                           const isCorrect = isRevealed && letter === currentQuestion.answer;
+                           const isWrongSelected = isRevealed && isSelected && letter !== currentQuestion.answer;
+                           const isWaiting = friendlyRevealed[currentQuestion.id] === 'waiting';
+
+                           let optionClass = `te-option-item ${isSelected ? 'selected' : ''}`.trim();
+                           if (isRevealed) {
+                               if (isCorrect) optionClass += ' reveal-correct';
+                               else if (isWrongSelected) optionClass += ' reveal-incorrect';
+                           }
+
+                           return (
+                               <label 
+                                   key={i}
+                                   className={optionClass}
+                                   onClick={() => {
+                                       if (!isRevealed && !isWaiting && !reviewMode) setAnswers(prev => ({ ...prev, [currentQuestion.id]: letter }));
+                                   }}
+                               >
+                                   <input type="radio" className="te-option-radio" checked={isSelected} readOnly />
+                                   <div className="math-inline-force" dangerouslySetInnerHTML={{ __html: formatHtml(opt) }} />
+                                   {isCorrect && <CheckCircle2 size={20} color="#1abc9c" style={{ marginLeft: 'auto' }} />}
+                                   {isWrongSelected && <XCircle size={20} color="#e74c3c" style={{ marginLeft: 'auto' }} />}
+                               </label>
+                           );
+                       })
+                      )}
                   </div>
 
                   {friendlyRevealed[currentQuestion.id] === 'waiting' && !reviewMode && (
@@ -1182,7 +1282,7 @@ export default function TestEngine() {
                   {(friendlyRevealed[currentQuestion.id] === true || reviewMode) && (
                      <div className="animate-fade-in" style={{ marginTop: '2rem', padding: '1rem', background: 'var(--c-accent1)', color: 'white', borderRadius: '4px' }}>
                        <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                         <CheckCircle2 size={18} /> Explanation
+                         {currentQuestion.options && currentQuestion.options.length === 0 ? 'Model Answer & Keywords' : 'Explanation'}
                        </h4>
                        <div className="math-inline-force" style={{ lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.explanation || "No explanation provided.") }} />
                      </div>

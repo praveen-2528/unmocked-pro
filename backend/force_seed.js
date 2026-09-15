@@ -40,6 +40,21 @@ const seedExams = [
     { name: 'English Language', questions: 30, duration: 20, topics: ['Reading Comprehension', 'Cloze Test', 'Error Spotting', 'Sentence Improvement', 'Para Jumbles', 'Vocabulary', 'Fill in the Blanks', 'Word Swap'] },
     { name: 'Quantitative Aptitude', questions: 35, duration: 20, topics: ['Data Interpretation', 'Number Series', 'Quadratic Equations', 'Simplification', 'Approximation', 'Profit and Loss', 'Time and Work', 'Time, Speed & Distance', 'Mixture & Allegation', 'Probability'] },
     { name: 'Reasoning Ability', questions: 35, duration: 20, topics: ['Puzzles', 'Seating Arrangement', 'Syllogism', 'Blood Relations', 'Coding-Decoding', 'Inequalities', 'Direction Sense', 'Order & Ranking', 'Input-Output'] }
+  ]},
+  { id: 'UPSC-PRE-GS1', name: 'UPSC Prelims GS Paper 1', duration: 120, options: 4, sectional: 0, marks_correct: 2.0, marks_incorrect: 0.66, sections: [
+    { name: 'General Studies', questions: 100, duration: 120, topics: ['History of India', 'Indian and World Geography', 'Indian Polity and Governance', 'Economic and Social Development', 'General Issues on Environmental Ecology', 'General Science', 'Current Events'] }
+  ]},
+  { id: 'UPSC-MAINS-GS1', name: 'UPSC Mains GS Paper 1', duration: 180, options: 0, sectional: 0, marks_correct: 10.0, marks_incorrect: 0.0, sections: [
+    { name: '10 Mark Questions', questions: 10, duration: 90, marks_correct: 10.0, topics: ['Indian Heritage and Culture', 'History of the World and Society', 'Geography of the World'] },
+    { name: '15 Mark Questions', questions: 10, duration: 90, marks_correct: 15.0, topics: ['Indian Heritage and Culture', 'History of the World and Society', 'Geography of the World'] }
+  ]},
+  { id: 'IBPS-PO-MAINS-DESC', name: 'IBPS PO Mains Descriptive', duration: 30, options: 0, sectional: 1, marks_correct: 15.0, marks_incorrect: 0.0, sections: [
+    { name: 'Essay Writing', questions: 1, duration: 15, marks_correct: 15.0, topics: ['Current Social Issues', 'Economy and Banking', 'Technology'] },
+    { name: 'Letter Writing', questions: 1, duration: 15, marks_correct: 10.0, topics: ['Formal Letter to Editor', 'Bank Manager Letter', 'Complaint Letter'] }
+  ]},
+  { id: 'IBPS-CLERK-MAINS-DESC', name: 'IBPS Clerk Mains Descriptive', duration: 30, options: 0, sectional: 1, marks_correct: 15.0, marks_incorrect: 0.0, sections: [
+    { name: 'Essay Writing', questions: 1, duration: 15, marks_correct: 15.0, topics: ['Current Social Issues', 'Economy and Banking', 'Technology'] },
+    { name: 'Letter Writing', questions: 1, duration: 15, marks_correct: 10.0, topics: ['Formal Letter to Editor', 'Bank Manager Letter', 'Complaint Letter'] }
   ]}
 ];
 

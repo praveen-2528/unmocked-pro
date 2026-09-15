@@ -14,9 +14,13 @@ export default function Results({ scoreData, testData, gameMode, liveStats, curr
     let correct = 0, incorrect = 0, unattempted = 0;
     sec.questions.forEach(q => {
       const ans = answers ? answers[q.id] : null;
-      if (!ans || ans === '0') unattempted++;
-      else if (ans === q.answer) correct++;
-      else incorrect++;
+      if (q.options && q.options.length === 0) {
+        if (!ans || ans.trim() === '') unattempted++;
+      } else {
+        if (!ans || ans === '0') unattempted++;
+        else if (ans === q.answer) correct++;
+        else incorrect++;
+      }
     });
     return { name: sec.name, total: sec.questions.length, correct, incorrect, unattempted };
   }) : [];

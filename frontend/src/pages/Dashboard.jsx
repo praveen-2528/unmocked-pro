@@ -264,75 +264,88 @@ export default function Dashboard() {
 
   const generatePrompt = (subjectName, qCount) => {
     const examName = selectedBp?.exam_name || 'Exam';
-    const optionsCount = selectedBp?.options_count || 4;
+    const examId = selectedBp?.exam_id || '';
+    const optionsCount = selectedBp?.options_count !== undefined ? selectedBp.options_count : 4;
 
     let prompt = `Act as an expert exam creator for the ${examName} exam. `;
     
     if (testMode === 'Topic' && selectedTopics.length > 0) {
-      prompt += `I need you to generate exactly ${qCount} multiple-choice questions for the section "${subjectName}". The questions MUST specifically cover the following topics: ${selectedTopics.join(', ')}. `;
+      prompt += `I need you to generate exactly ${qCount} ${optionsCount === 0 ? 'descriptive' : 'multiple-choice'} questions for the section "${subjectName}". The questions MUST specifically cover the following topics: ${selectedTopics.join(', ')}. `;
     } else {
-      prompt += `I need you to generate exactly ${qCount} multiple-choice questions for the subject/topic: "${subjectName}". `;
+      prompt += `I need you to generate exactly ${qCount} ${optionsCount === 0 ? 'descriptive' : 'multiple-choice'} questions for the subject/topic: "${subjectName}". `;
     }
+    
     prompt += `Ensure the questions closely mirror the EXACT pattern, syllabus, and extreme rigor of the actual ${examName} exam.\n\n`;
     
+    // DESCRIPTIVE EXAMS
+    if (optionsCount === 0) {
+      prompt += `CRITICAL INSTRUCTIONS FOR DESCRIPTIVE EXAMS:\n`;
+      prompt += `1. This is a DESCRIPTIVE / SUBJECTIVE exam section (like UPSC Mains or IBPS PO Mains Descriptive). Do NOT generate multiple choice options.\n`;
+      prompt += `2. Deep Subject Matter: Generate highly analytical essay/descriptive questions requiring deep insight, multi-dimensional analysis, or proper letter format based on the topic.\n`;
+      prompt += `3. Keywords Generation (CRITICAL FOR LOCAL GRADING): The system uses an automated local keyword-matching grader. To ensure fair grading, you MUST think of 2 DIFFERENT POTENTIAL MODEL ANSWERS (Primary and Alternate) that a student might write. For each variant, extract 10-15 core keywords/synonyms. You MUST separate the keywords for each variant using the exact string " ::: " in the Expected_Keywords column. (e.g. keyword1, keyword2 ::: keyword3, keyword4). Do NOT use pipes (|) inside this column!\n`;
+      prompt += `4. Model Answers: In the explanation field, you MUST provide BOTH Detailed Model Answers (The Primary Answer, and One Different Correct Alternate Answer). EACH answer MUST be approximately 250 words long, providing a highly comprehensive, real-world essay response. Use clear HTML headings (e.g., <strong>Primary Answer (250 words)</strong><br/><br/>...<br/><br/><strong>Alternate Answer (250 words)</strong>) so the student can compare their writing against 2 different comprehensive styles.\n\n`;
+
+      prompt += `FORMAT RULES:\n`;
+      prompt += `1. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
+      prompt += `2. The pipe character (|) is the ONLY delimiter. Do NOT use double quotes.\n`;
+      prompt += `3. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row.\n`;
+      prompt += `4. The row structure MUST be: Q||[Question_Text]|[Comma_Separated_Core_Keywords]|[Detailed_Model_Answer]###\n`;
+      
+      prompt += `\nFORMAT HEADERS (Do not change these):\nRow_Type|Passage_ID|Question_Text|Expected_Keywords|Model_Answer###\n\n`;
+      return prompt;
+    }
+
+    // MULTIPLE CHOICE EXAMS
     prompt += `CRITICAL INSTRUCTIONS FOR RIGOR & COMPLEXITY:\n`;
     prompt += `1. AVOID BASIC TRIVIA: The questions MUST NOT be basic definitions, direct formula applications, or simple factual lookups. They must require multi-step reasoning, critical thinking, advanced calculations, or deep conceptual understanding.\n`;
-    prompt += `2. STRICT EXAM-LEVEL CALIBRATION: Calibrate the difficulty strictly to the ${examName} level. For competitive exams, the questions must be exceptionally challenging, featuring nuanced scenarios, edge cases, and high cognitive load.\n`;
-    prompt += `3. PLAUSIBLE DISTRACTORS: The incorrect options MUST be highly plausible. They should represent common student misconceptions, intermediate calculation errors, or partial truths. Do not provide obviously wrong options.\n`;
-    prompt += `4. OVERALL DIFFICULTY: The difficulty tier should strictly range from Medium-Hard to Extremely Hard.\n\n`;
+    prompt += `2. PLAUSIBLE DISTRACTORS: The incorrect options MUST be highly plausible. They should represent common student misconceptions, intermediate calculation errors, or partial truths.\n`;
+    prompt += `3. OVERALL DIFFICULTY: The difficulty tier should strictly range from Medium-Hard to Extremely Hard.\n\n`;
+
+    // EXAM SPECIFIC TAILORING
+    if (examId.includes('UPSC-PRE')) {
+        prompt += `UPSC PRELIMS SPECIFIC RULES:\n`;
+        prompt += `- UPSC Prelims heavily features multi-statement questions. You MUST frequently format questions like this:\n`;
+        prompt += `  Consider the following statements:\n  1. [Statement 1]\n  2. [Statement 2]\n  3. [Statement 3]\n  Which of the statements given above is/are correct?\n`;
+        prompt += `- Do NOT generate Data Interpretation (DI) charts or quantitative puzzles for GS Paper 1.\n`;
+        prompt += `- Focus on chronological ordering, geographical mapping, conceptual constitutional scenarios, and applied science.\n\n`;
+    } else if (examId.includes('IBPS') || examId.includes('SBI')) {
+        prompt += `BANKING EXAM SPECIFIC RULES:\n`;
+        prompt += `- Banking exams require heavy Data Interpretation (DI), complex seating arrangements, syllogisms, and blood relations.\n`;
+        prompt += `- Use the D/DQ row format for DI charts and P/PQ row format for reading passages and puzzles.\n\n`;
+    } else if (examId.includes('SSC') || examId.includes('RRB')) {
+        prompt += `SSC/RRB SPECIFIC RULES:\n`;
+        prompt += `- Focus on advanced arithmetic, geometry, non-verbal reasoning, and static GK.\n`;
+        prompt += `- Keep questions relatively crisp but mathematically or logically tricky.\n\n`;
+    } else {
+        prompt += `UNIVERSAL EXAM RULES:\n`;
+        prompt += `- Adapt the question style appropriately to the provided topic.\n`;
+        prompt += `- If the topic involves data, you may use DI charts. If it involves passages, use passages.\n\n`;
+    }
 
     prompt += `FORMAT RULES:\n`;
     prompt += `1. Each question must have exactly ${optionsCount} options.\n`;
-    prompt += `3. Only ONE option can be correct.\n`;
-    prompt += `4. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
-    prompt += `5. Do NOT include any conversational text before or after the output.\n`;
-    prompt += `6. CRITICAL: Do NOT wrap any text in double quotes unless it is actually part of the question. The pipe character (|) is the ONLY delimiter.\n`;
-    prompt += `7. MATH/EQUATIONS: If the question contains mathematics, use inline LaTeX wrapped in \\( \\). Do NOT use $ display math. For reasoning inequalities (e.g., A > B < C), use inline math \\( A > B \\).\n`;
-    prompt += `8. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row (after the Explanation). This is critical for parsing newlines correctly.\n`;
-    prompt += `9. PASSAGES (IMPORTANT): For questions based on a reading passage, data interpretation, puzzle, or coding-decoding sets, use this format:\n`;
-    prompt += `   - First, output the passage on its own row (Row_Type = P): P|[Passage_ID]|[Full Passage Text]###\n`;
-    prompt += `   - Then, for each question related to that passage (Row_Type = PQ): PQ|[Passage_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
-    prompt += `   - For normal standalone questions with no passage (Row_Type = Q): Q||[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
-    prompt += `10. LINE BREAKS (CRITICAL): For Syllogisms, Inequalities, and Data Sufficiency, you MUST include standard newlines (\\n) to separate each statement and conclusion. Do NOT write them as a single continuous string. Example:\nStatements:\nAll A are B.\nSome B are C.\n\nConclusions:\nI. Some A are C.\nII. No A is C.\n`;
-    prompt += `11. INTELLIGENT FORMATTING (CRITICAL): You must analyze the topic (e.g. English Para Jumbles, Reading Comprehension, Puzzles) and intelligently determine the best visual layout. If a question contains multiple distinct sentences, statements, or paragraphs that need to be ordered or read separately, you MUST use standard newlines (\\n) to separate them so they are readable on the UI.\n`;
-    prompt += `12. DATA INTERPRETATION (DI) CHARTS: For Data Interpretation questions, use the D/DQ row format instead of P/PQ. This renders charts on the UI.\n`;
-    prompt += `   - Output chart data as JSON on a D row: D|[DI_Set_ID]|{"type":"bar|line|pie|table|stacked_bar|radar|mixed","title":"Chart Title","xLabel":"X Axis","yLabel":"Y Axis","categories":["Cat1",...],"series":[{"name":"S1","values":[v1,...]}]}###\n`;
-    prompt += `   - The JSON in D row must be valid. Use double quotes for keys/strings. The pipe (|) only separates Row_Type, ID, and JSON.\n`;
-    prompt += `   - For each question based on that chart (Row_Type = DQ): DQ|[DI_Set_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
-    prompt += `   - ADVANCED DI TYPES: To make the exam challenging, you MUST frequently use these Advanced DI formats:\n`;
-    prompt += `      * "radar": A radar/web chart. Functions like a line chart but plotted circularly.\n`;
-    prompt += `      * "table" (Missing DI): A table where some values are missing. Represent missing values in the "values" array as "?" or "-".\n`;
-    prompt += `      * "mixed": Multiple charts for one set of questions. Structure JSON as: {"type":"mixed", "charts": [ {chart1 json}, {chart2 json} ] }.\n`;
-    prompt += `      * Caselet DI: Dense paragraphs with numerical relationships. Use the P/PQ (Passage) format for Caselet DI instead of D/DQ.\n\n`;
+    prompt += `2. Only ONE option can be correct.\n`;
+    prompt += `3. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
+    prompt += `4. CRITICAL: Do NOT wrap any text in double quotes unless it is actually part of the question. The pipe character (|) is the ONLY delimiter.\n`;
+    prompt += `5. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row (after the Explanation).\n`;
+    prompt += `6. PASSAGES: For questions based on a reading passage or puzzle, use this format:\n`;
+    prompt += `   - First row: P|[Passage_ID]|[Full Passage Text]###\n`;
+    prompt += `   - Then questions: PQ|[Passage_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    prompt += `   - For standalone questions: Q||[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    
+    // Add DI rules for exams that might use them
+    if (!examId.includes('UPSC-PRE')) {
+        prompt += `7. DATA INTERPRETATION (DI) CHARTS:\n`;
+        prompt += `   - Output chart data as JSON on a D row: D|[DI_Set_ID]|{"type":"bar|line|pie|table|radar","title":"Chart Title","xLabel":"X Axis","yLabel":"Y Axis","categories":["Cat1",...],"series":[{"name":"S1","values":[v1,...]}]}###\n`;
+        prompt += `   - For each question based on that chart: DQ|[DI_Set_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    }
 
-    prompt += `FORMAT HEADERS (Do not change these):\n`;
+    prompt += `\nFORMAT HEADERS (Do not change these):\n`;
     let headers = ['Row_Type', 'Passage_ID', 'Text_Content'];
     for(let i=1; i<=optionsCount; i++) headers.push(`Option_${String.fromCharCode(64+i)}`);
     headers.push('Correct_Option');
     headers.push('Explanation');
     prompt += headers.join('|') + '###\n\n';
-
-    prompt += `EXAMPLE OUTPUT:\n`;
-    prompt += headers.join('|') + '###\n';
-    if(optionsCount === 4) {
-      prompt += `P|passage1|This is a reading passage about history.||||||###\n`;
-      prompt += `PQ|passage1|What is the main idea?|Opt1|Opt2|Opt3|Opt4|A|Because of X.###\n`;
-      prompt += `Q||What is 2+2?|1|2|3|4|D|Basic math.###\n`;
-    } else {
-      prompt += `P|puzzle1|Seven persons sit in a row...|||||||###\n`;
-      prompt += `PQ|puzzle1|Who sits at the end?|A|B|C|D|E|A|A sits at the extreme left.###\n`;
-      prompt += `Q||Statements:<br/>All A are B.<br/>Some B are C.<br/><br/>Conclusions:<br/>I. Some A are C.<br/>II. No A is C.|Only I follows|Only II follows|Either I or II|Neither I nor II|Both I and II|C|Either case.###\n`;
-    }
-
-    prompt += `\nDI CHART EXAMPLE (when topic involves Data Interpretation):\n`;
-    if(optionsCount === 4) {
-      prompt += `D|di1|{"type":"bar","title":"Sales (in lakhs)","xLabel":"Year","yLabel":"Sales","categories":["2019","2020","2021","2022"],"series":[{"name":"Product A","values":[45,38,52,61]},{"name":"Product B","values":[30,35,40,55]}]}###\n`;
-      prompt += `DQ|di1|What is the total sales of Product A from 2019 to 2022?|186 lakhs|196 lakhs|206 lakhs|176 lakhs|B|45+38+52+61=196 lakhs.###\n`;
-      prompt += `DQ|di1|In which year did Product B show the highest growth?|2020|2021|2022|2019|C|2022: 55-40=15 is highest year-on-year increase.###\n`;
-    } else {
-      prompt += `D|di1|{"type":"bar","title":"Production (in thousands)","xLabel":"Year","yLabel":"Units","categories":["2018","2019","2020","2021","2022"],"series":[{"name":"Company X","values":[120,135,110,150,160]},{"name":"Company Y","values":[100,115,95,130,145]}]}###\n`;
-      prompt += `DQ|di1|What is the ratio of Company X to Y production in 2021?|15:13|3:2|10:9|5:4|15:14|A|150:130 = 15:13.###\n`;
-    }
 
     return prompt;
   };
