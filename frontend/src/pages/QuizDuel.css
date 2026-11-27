@@ -223,15 +223,18 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0 8px;
+  padding: 4px 8px;
   min-height: 0;
+  overflow-y: auto;
 }
 .qd-question-area.slide-in { animation: slideInQuestion 0.4s ease-out; }
 .qd-question-text {
-  font-size: clamp(0.95rem, 2.5vh, 1.4rem);
+  font-size: clamp(0.92rem, 2.2vh, 1.3rem);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
   text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 /* ─── Options Grid ─── */

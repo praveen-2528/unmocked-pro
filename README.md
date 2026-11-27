@@ -86,6 +86,17 @@ pm2 save
 pm2 startup
 \`\`\`
 
+### 7. Automatic Hourly Updates on EC2
+To automatically detect new commits pushed to \`main\`, pull safely (without overwriting \`backend/unmocked.db\`, \`backend/.env\`, or \`backend/uploads/\`), update dependencies if needed, and restart PM2 once every hour:
+\`\`\`bash
+chmod +x deploy/auto-update.sh deploy/install-cron.sh
+./deploy/install-cron.sh --run-now
+\`\`\`
+You can check update logs anytime with:
+\`\`\`bash
+tail -f deploy/auto-update.log
+\`\`\`
+
 ## 🛠 Tech Stack
 - **Frontend**: React, Vite, React Router, TailwindCSS/Geist UI
 - **Backend**: Node.js, Express, Socket.io (for Multiplayer)

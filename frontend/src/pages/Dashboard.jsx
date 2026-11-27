@@ -9,6 +9,7 @@ import useAuthStore from '../store/useAuthStore';
 import useChatStore from '../store/useChatStore';
 import Tilt from 'react-parallax-tilt';
 import { motion, AnimatePresence } from 'framer-motion';
+import { parsePsvQuestions, parseQuizDuelPsv, shuffleQuestionBlocks, stripCodeFencesAndNoise } from '../utils/questionUtils';
 
 const TiltWrapper = ({ children }) => (
   <Tilt tiltMaxAngleX={2} tiltMaxAngleY={2} glareEnable={true} glareMaxOpacity={0.1} glarePosition="all" scale={1.01} transitionSpeed={1500} tiltReverse={true}>
@@ -282,16 +283,18 @@ export default function Dashboard() {
       prompt += `CRITICAL INSTRUCTIONS FOR DESCRIPTIVE EXAMS:\n`;
       prompt += `1. This is a DESCRIPTIVE / SUBJECTIVE exam section (like UPSC Mains or IBPS PO Mains Descriptive). Do NOT generate multiple choice options.\n`;
       prompt += `2. Deep Subject Matter: Generate highly analytical essay/descriptive questions requiring deep insight, multi-dimensional analysis, or proper letter format based on the topic.\n`;
-      prompt += `3. Keywords Generation (CRITICAL FOR LOCAL GRADING): The system uses an automated local keyword-matching grader. To ensure fair grading, you MUST think of 2 DIFFERENT POTENTIAL MODEL ANSWERS (Primary and Alternate) that a student might write. For each variant, extract 10-15 core keywords/synonyms. You MUST separate the keywords for each variant using the exact string " ::: " in the Expected_Keywords column. (e.g. keyword1, keyword2 ::: keyword3, keyword4). Do NOT use pipes (|) inside this column!\n`;
-      prompt += `4. Model Answers: In the explanation field, you MUST provide BOTH Detailed Model Answers (The Primary Answer, and One Different Correct Alternate Answer). EACH answer MUST be approximately 250 words long, providing a highly comprehensive, real-world essay response. Use clear HTML headings (e.g., <strong>Primary Answer (250 words)</strong><br/><br/>...<br/><br/><strong>Alternate Answer (250 words)</strong>) so the student can compare their writing against 2 different comprehensive styles.\n\n`;
+      prompt += `3. Keywords Generation (CRITICAL FOR LOCAL GRADING): The system uses an automated local keyword-matching grader. To ensure fair grading, you MUST think of 2 DIFFERENT POTENTIAL MODEL ANSWERS (Primary and Alternate) that a student might write. For each variant, extract 10-15 core keywords/synonyms. You MUST separate the keywords for each variant using the exact string " ::: " in the Expected_Keywords column (e.g. keyword1, keyword2 ::: keyword3, keyword4). Do NOT use pipes (|) inside this column!\n`;
+      prompt += `4. Model Answers: In the Model_Answer column, provide BOTH Detailed Model Answers (Primary Answer and One Different Correct Alternate Answer, ~250 words each). Use clean HTML tags like <strong>Primary Answer (250 words)</strong><br/><br/>...<br/><br/><strong>Alternate Answer (250 words)</strong>. Do NOT use Markdown "###" headings inside the text.\n\n`;
 
       prompt += `FORMAT RULES:\n`;
-      prompt += `1. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
-      prompt += `2. The pipe character (|) is the ONLY delimiter. Do NOT use double quotes.\n`;
-      prompt += `3. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row.\n`;
-      prompt += `4. The row structure MUST be: Q||[Question_Text]|[Comma_Separated_Core_Keywords]|[Detailed_Model_Answer]###\n`;
+      prompt += `1. Output ONLY raw Pipe-Separated Values (|) rows. Do NOT include conversational intro/outro text, and do NOT wrap in markdown code fences (\`\`\`).\n`;
+      prompt += `2. DELIMITER SAFETY: The pipe character (|) is the ONLY column delimiter. NEVER use "|" or "###" inside Question_Text, Expected_Keywords, or Model_Answer. Do NOT wrap fields in extra double quotes.\n`;
+      prompt += `3. ROW DELIMITER: Append the exact string "###" at the VERY END of EVERY row (after Model_Answer).\n`;
+      prompt += `4. ROW STRUCTURE: Q||[Question_Text]|[Expected_Keywords]|[Detailed_Model_Answer]###\n`;
+      prompt += `5. Generate EXACTLY ${qCount} Q rows.\n`;
       
-      prompt += `\nFORMAT HEADERS (Do not change these):\nRow_Type|Passage_ID|Question_Text|Expected_Keywords|Model_Answer###\n\n`;
+      prompt += `\nFORMAT HEADERS (Do not change columns):\nRow_Type|Passage_ID|Question_Text|Expected_Keywords|Model_Answer###\n\n`;
+      prompt += `EXAMPLE:\nQ||Discuss the impact of digital public infrastructure on financial inclusion in India. (250 words)|UPI, Jan Dhan, Aadhaar, financial inclusion, last-mile delivery, DBT ::: fintech, digital literacy, MSME credit, regulatory oversight, cybersecurity|<strong>Primary Answer (250 words)</strong><br/><br/>Digital Public Infrastructure (DPI)...<br/><br/><strong>Alternate Answer (250 words)</strong><br/><br/>India's fintech architecture...###\n\n`;
       return prompt;
     }
 
@@ -304,65 +307,91 @@ export default function Dashboard() {
     // EXAM SPECIFIC TAILORING
     if (examId.includes('UPSC-PRE')) {
         prompt += `UPSC PRELIMS SPECIFIC RULES:\n`;
-        prompt += `- UPSC Prelims heavily features multi-statement questions. You MUST frequently format questions like this:\n`;
+        prompt += `- UPSC Prelims heavily features multi-statement questions. Format multi-statement questions with standard newlines like:\n`;
         prompt += `  Consider the following statements:\n  1. [Statement 1]\n  2. [Statement 2]\n  3. [Statement 3]\n  Which of the statements given above is/are correct?\n`;
         prompt += `- Do NOT generate Data Interpretation (DI) charts or quantitative puzzles for GS Paper 1.\n`;
         prompt += `- Focus on chronological ordering, geographical mapping, conceptual constitutional scenarios, and applied science.\n\n`;
     } else if (examId.includes('IBPS') || examId.includes('SBI')) {
         prompt += `BANKING EXAM SPECIFIC RULES:\n`;
         prompt += `- Banking exams require heavy Data Interpretation (DI), complex seating arrangements, syllogisms, and blood relations.\n`;
-        prompt += `- Use the D/DQ row format for DI charts and P/PQ row format for reading passages and puzzles.\n\n`;
+        prompt += `- Use the D/DQ row format for DI charts and P/PQ row format for reading passages, caselets, and puzzles.\n\n`;
     } else if (examId.includes('SSC') || examId.includes('RRB')) {
         prompt += `SSC/RRB SPECIFIC RULES:\n`;
         prompt += `- Focus on advanced arithmetic, geometry, non-verbal reasoning, and static GK.\n`;
-        prompt += `- Keep questions relatively crisp but mathematically or logically tricky.\n\n`;
+        prompt += `- Keep questions crisp, mathematically or logically tricky, and exam-authentic.\n\n`;
     } else {
         prompt += `UNIVERSAL EXAM RULES:\n`;
         prompt += `- Adapt the question style appropriately to the provided topic.\n`;
-        prompt += `- If the topic involves data, you may use DI charts. If it involves passages, use passages.\n\n`;
+        prompt += `- If the topic involves data, use DI charts (D/DQ). If it involves passages or puzzles, use passages (P/PQ).\n\n`;
     }
 
-    prompt += `FORMAT RULES:\n`;
-    prompt += `1. Each question must have exactly ${optionsCount} options.\n`;
-    prompt += `2. Only ONE option can be correct.\n`;
-    prompt += `3. You MUST output the final result STRICTLY as a raw Pipe-Separated Values format (|).\n`;
-    prompt += `4. CRITICAL: Do NOT wrap any text in double quotes unless it is actually part of the question. The pipe character (|) is the ONLY delimiter.\n`;
-    prompt += `5. ROW DELIMITER: You MUST append the exact string "###" at the very end of EVERY row (after the Explanation).\n`;
-    prompt += `6. PASSAGES: For questions based on a reading passage or puzzle, use this format:\n`;
-    prompt += `   - First row: P|[Passage_ID]|[Full Passage Text]###\n`;
-    prompt += `   - Then questions: PQ|[Passage_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    prompt += `FORMAT RULES (FOLLOW STRICTLY):\n`;
+    prompt += `1. OPTIONS & ANSWER: Each question MUST have exactly ${optionsCount} non-empty options, and ONLY ONE option is correct. The Correct_Option column MUST be ONLY a single uppercase letter (A-${String.fromCharCode(64 + optionsCount)}), NEVER "Option A" or the answer text.\n`;
+    prompt += `2. RAW OUTPUT ONLY: Output ONLY raw Pipe-Separated Values (|) rows. Do NOT include conversational text before or after, and do NOT wrap in markdown code fences (\`\`\`).\n`;
+    prompt += `3. DELIMITER SAFETY: The pipe character (|) is the ONLY column delimiter, and "###" is the ONLY row delimiter.\n`;
+    prompt += `   - NEVER use "|" inside any question, passage, option, JSON, or explanation (use \\lvert x \\rvert instead of |x|, use \\(P(A \\mid B)\\) instead of P(A|B), and never use markdown pipe tables).\n`;
+    prompt += `   - NEVER use "###" inside text or explanations (ONLY at the very end of every row).\n`;
+    prompt += `   - Do NOT wrap cell contents in extra double quotes.\n`;
+    prompt += `4. MATH, EQUATIONS & INEQUALITIES: Wrap mathematical formulas, fractions, roots, and reasoning inequalities in inline LaTeX \\( ... \\) (e.g. \\(\\frac{a}{b}\\), \\(x^2 + y^2\\), \\(A > B \\ge C\\)). Do NOT use $$...$$ display math inside options or inline text, and do NOT leave bare < or > signs un-wrapped outside \\( ... \\). Write currency as Rs. or USD (not bare $).\n`;
+    prompt += `5. LINE BREAKS & READABILITY: For Syllogisms, Statements & Conclusions, Data Sufficiency, Blood Relations, Multi-statement questions, Para Jumbles, and Puzzles, ALWAYS separate statements/clues/conclusions with standard newlines (\\n) inside the cell so they render cleanly in the UI.\n`;
+    prompt += `6. ROW DELIMITER: Append "###" at the VERY END of EVERY row.\n`;
+    prompt += `7. PASSAGES & PUZZLES (P / PQ):\n`;
+    prompt += `   - First output the passage row: P|[Passage_ID]|[Full Passage Text]###\n`;
+    prompt += `   - Immediately after, output its questions: PQ|[Passage_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
     prompt += `   - For standalone questions: Q||[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+    prompt += `   - Always use unique Passage_IDs (p1, p2, ...). Note: P rows do NOT count toward the ${qCount} questions.\n`;
     
     // Add DI rules for exams that might use them
     if (!examId.includes('UPSC-PRE')) {
-        prompt += `7. DATA INTERPRETATION (DI) CHARTS:\n`;
-        prompt += `   - Output chart data as JSON on a D row: D|[DI_Set_ID]|{"type":"bar|line|pie|table|radar","title":"Chart Title","xLabel":"X Axis","yLabel":"Y Axis","categories":["Cat1",...],"series":[{"name":"S1","values":[v1,...]}]}###\n`;
-        prompt += `   - For each question based on that chart: DQ|[DI_Set_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+        prompt += `8. DATA INTERPRETATION (DI) CHARTS (D / DQ):\n`;
+        prompt += `   - Output valid single-line JSON on a D row immediately before its questions:\n`;
+        prompt += `     D|[DI_Set_ID]|{"type":"bar|stacked_bar|line|pie|donut|radar|table|mixed","title":"Chart Title","xLabel":"X Axis","yLabel":"Y Axis","categories":["Cat1",...],"series":[{"name":"S1","values":[v1,...]}]}###\n`;
+        prompt += `   - Advanced DI: Use "table" with "?" or "-" in values for Missing DI; use {"type":"mixed","title":"Combined DI","charts":[{...},{...}]} for Mixed DI; use P/PQ for Caselet DI.\n`;
+        prompt += `   - Then for each question based on that chart: DQ|[DI_Set_ID]|[Question_Text]|[Options...]|[Correct_Option]|[Explanation]###\n`;
+        prompt += `   - Always use unique DI_Set_IDs (di1, di2, ...). Note: D rows do NOT count toward the ${qCount} questions.\n`;
     }
+    prompt += `9. EXACT COUNT: Generate EXACTLY ${qCount} question rows (counting Q, PQ, and DQ rows only).\n`;
 
-    prompt += `\nFORMAT HEADERS (Do not change these):\n`;
+    prompt += `\nFORMAT HEADERS (Column order):\n`;
     let headers = ['Row_Type', 'Passage_ID', 'Text_Content'];
     for(let i=1; i<=optionsCount; i++) headers.push(`Option_${String.fromCharCode(64+i)}`);
     headers.push('Correct_Option');
     headers.push('Explanation');
     prompt += headers.join('|') + '###\n\n';
 
+    prompt += `EXAMPLE OUTPUT:\n`;
+    if (optionsCount === 4) {
+      prompt += `P|p1|Digital public infrastructure has transformed last-mile banking across rural regions...###\n`;
+      prompt += `PQ|p1|What is the primary driver mentioned in the passage?|Subsidies|Digital public infrastructure|Cash transfers|Tax cuts|B|The passage directly credits digital public infrastructure.###\n`;
+      prompt += `Q||Statements:\n1. All pens are books.\n2. Some books are pages.\n\nConclusions:\nI. Some pens are pages.\nII. Some books are pens.|Only I follows|Only II follows|Both I and II follow|Neither follows|B|All pens are books implies some books are pens.###\n`;
+      prompt += `Q||If \\(x \\neq 0\\) and \\(x + \\frac{1}{x} = 4\\), find \\(x^2 + \\frac{1}{x^2}\\).|12|14|16|18|B|Squaring gives \\(x^2 + 2 + \\frac{1}{x^2} = 16\\), so \\(16 - 2 = 14\\).###\n`;
+    } else {
+      prompt += `P|p1|Seven persons A, B, C, D, E, F, and G sit in a row facing North. B sits third to the left of E...###\n`;
+      prompt += `PQ|p1|Who sits at the extreme left end?|A|B|C|D|E|A|From the given clues, A sits at the extreme left.###\n`;
+      prompt += `Q||Statements:\n1. All A are B.\n2. Some B are C.\n\nConclusions:\nI. Some A are C.\nII. No A is C.|Only I follows|Only II follows|Either I or II follows|Neither I nor II follows|Both I and II follow|C|Either I or II follows from the complementary pair.###\n`;
+    }
+    if (!examId.includes('UPSC-PRE')) {
+      if (optionsCount === 4) {
+        prompt += `D|di1|{"type":"bar","title":"Sales (in units)","xLabel":"Year","yLabel":"Units","categories":["2021","2022","2023"],"series":[{"name":"Model X","values":[120,150,180]},{"name":"Model Y","values":[90,110,140]}]}###\n`;
+        prompt += `DQ|di1|What is the percentage increase in Model X sales from 2021 to 2023?|25%|40%|50%|60%|C|\\(\\frac{180-120}{120} \\times 100 = 50\\%\\).###\n`;
+      } else {
+        prompt += `D|di1|{"type":"bar","title":"Production (in thousands)","xLabel":"Year","yLabel":"Units","categories":["2020","2021","2022"],"series":[{"name":"Company X","values":[120,135,150]},{"name":"Company Y","values":[100,115,130]}]}###\n`;
+        prompt += `DQ|di1|What is the ratio of Company X to Company Y production in 2022?|15:13|13:15|10:9|5:4|15:14|A|Ratio is \\(150:130 = 15:13\\).###\n`;
+      }
+    }
+
     return prompt;
   };
 
-  const handleCopyPrompt = (subjectName, qCount) => {
-    const textToCopy = generatePrompt(subjectName, qCount);
-    
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(textToCopy);
-    } else {
+  const copyTextWithFallback = (textToCopy, key) => {
+    const fallbackCopy = () => {
       const textArea = document.createElement("textarea");
       textArea.value = textToCopy;
-      
-      textArea.style.position = "absolute";
+      textArea.style.position = "fixed";
       textArea.style.left = "-999999px";
-      
+      textArea.style.top = "-999999px";
       document.body.appendChild(textArea);
+      textArea.focus();
       textArea.select();
       try {
         document.execCommand('copy');
@@ -370,10 +399,20 @@ export default function Dashboard() {
         console.error("Failed to copy text: ", error);
       }
       document.body.removeChild(textArea);
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(textToCopy).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
     }
     
-    setCopiedSection(subjectName);
+    setCopiedSection(key);
     setTimeout(() => setCopiedSection(null), 2000);
+  };
+
+  const handleCopyPrompt = (subjectName, qCount) => {
+    copyTextWithFallback(generatePrompt(subjectName, qCount), subjectName);
   };
 
   const handleAutoGenerate = async (subjectName, qCount, isQuizDuel = false) => {
@@ -409,26 +448,12 @@ export default function Dashboard() {
 
       const data = await response.json();
       let fullText = data.choices[0]?.message?.content || "";
+      const cleanedText = stripCodeFencesAndNoise(fullText) || fullText.trim();
 
       if (isQuizDuel) {
-        setQuizDuelData(fullText);
+        setQuizDuelData(cleanedText);
       } else {
-        setSectionData(prev => ({ ...prev, [subjectName]: fullText }));
-      }
-
-      if (fullText.includes("```")) {
-         const blocks = fullText.split("```");
-         if (blocks.length >= 3) {
-           let cleanText = blocks[1];
-           if (cleanText.startsWith("csv\n") || cleanText.startsWith("text\n")) {
-              cleanText = cleanText.substring(cleanText.indexOf('\n') + 1);
-           }
-           if (isQuizDuel) {
-             setQuizDuelData(cleanText.trim());
-           } else {
-             setSectionData(prev => ({ ...prev, [subjectName]: cleanText.trim() }));
-           }
-         }
+        setSectionData(prev => ({ ...prev, [subjectName]: cleanedText }));
       }
     } catch (e) {
       console.error(e);
@@ -437,135 +462,54 @@ export default function Dashboard() {
     setIsGeneratingAI(null);
   };
 
-  const parseRawCsv = (csvString, expectedCols) => {
-    if (!csvString.trim()) return [];
-    let rawRows = csvString.split('###').map(r => r.trim()).filter(r => r.length > 0);
-    if (rawRows[0].includes('Question_Text|') || rawRows[0].includes('Row_Type|')) {
-      rawRows = rawRows.slice(1);
-    }
-    if (rawRows.length === 0) return [];
-
-    let currentPassages = {};
-    let currentChartData = {};
-    let parsedQs = [];
-
-    rawRows.forEach((row, i) => {
-      const cols = row.split('|');
-      const rowType = cols[0].trim();
-      
-      if (rowType === 'P') {
-         const pId = cols[1]?.trim();
-         const pText = cols[2]?.trim();
-         if (pId && pText) {
-             currentPassages[pId] = pText;
-         }
-         return; 
-      }
-      
-      if (rowType === 'D') {
-         const dId = cols[1]?.trim();
-         const dJson = cols.slice(2).join('|').trim();
-         if (dId && dJson) {
-             try {
-                 currentChartData[dId] = JSON.parse(dJson);
-             } catch(e) {
-                 console.warn(`Failed to parse DI chart JSON for ${dId}:`, e.message);
-             }
-         }
-         return;
-      }
-      
-      if (rowType === 'DQ' || rowType === 'PQ' || rowType === 'Q') {
-          const pId = cols[1]?.trim();
-          const text = cols[2]?.trim();
-          const answer = cols[cols.length - 2]?.trim();
-          const explanation = cols[cols.length - 1]?.trim() || '';
-          const options = cols.slice(3, cols.length - 2).map(o => o.trim());
-          
-          const qObj = {
-             id: Math.random().toString(36).substr(2, 9),
-             text: text,
-             options: options,
-             answer: answer,
-             explanation: explanation,
-             passage: rowType === 'PQ' ? (currentPassages[pId] || pId) : null
-          };
-          if (rowType === 'DQ' && pId && currentChartData[pId]) {
-             qObj.chartData = currentChartData[pId];
-          }
-          parsedQs.push(qObj);
-      } else {
-          if (cols.length < expectedCols) throw new Error(`Row ${i+1} is missing pipes. Found ${cols.length} columns. Data: ${row.substring(0, 50)}...`);
-          
-          let text = cols[0].trim();
-          let passage = null;
-          
-          if (text.toLowerCase().startsWith('passage:')) {
-             const parts = text.split('Question:');
-             if (parts.length > 1) {
-                 passage = parts[0].substring(8).trim();
-                 text = parts.slice(1).join('Question:').trim();
-             }
-          }
-          
-          parsedQs.push({
-            id: Math.random().toString(36).substr(2, 9),
-            text: text,
-            options: cols.slice(1, expectedCols - 2).map(o => o.trim()),
-            answer: cols[expectedCols - 2].trim(),
-            explanation: cols[expectedCols - 1]?.trim() || '',
-            passage: passage
-          });
-      }
-    });
-    
-    return parsedQs;
+  const parseRawCsv = (csvString, optionsCount) => {
+    return parsePsvQuestions(csvString, optionsCount);
   };
 
-
   const shuffleQuestions = (questions) => {
-    const blocks = [];
-    let currentPassage = null;
-    let currentBlock = [];
+    return shuffleQuestionBlocks(questions);
+  };
 
-    questions.forEach(q => {
-      if (q.passage) {
-        if (currentPassage !== q.passage) {
-          if (currentBlock.length > 0) blocks.push(currentBlock);
-          currentBlock = [q];
-          currentPassage = q.passage;
-        } else {
-          currentBlock.push(q);
-        }
-      } else {
-        if (currentBlock.length > 0) blocks.push(currentBlock);
-        currentBlock = [q];
-        currentPassage = null;
-      }
-    });
-    if (currentBlock.length > 0) blocks.push(currentBlock);
-
-    for (let i = blocks.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
+  const getSectionPreviewStatus = (rawData, expectedCount) => {
+    if (!rawData || !rawData.trim()) return null;
+    const optionsCount = selectedBp?.options_count !== undefined ? selectedBp.options_count : 4;
+    try {
+      const qs = parsePsvQuestions(rawData, optionsCount);
+      return {
+        ok: qs.length === expectedCount,
+        count: qs.length,
+        expected: expectedCount,
+        error: null
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        count: 0,
+        expected: expectedCount,
+        error: err.message
+      };
     }
-
-    return blocks.flat();
   };
 
   const handleParseAndValidateAll = () => {
     setError('');
     try {
-      const expectedCols = selectedBp.options_count + 3;
+      const optionsCount = selectedBp.options_count !== undefined ? selectedBp.options_count : 4;
       let finalSections = [];
       let totalParsed = 0;
 
       if (testMode === 'Full') {
         for (let sec of selectedBp.sections) {
           const rawData = sectionData[sec.name] || '';
-          if (!rawData) throw new Error(`Please provide data for section: ${sec.name}`);
+          if (!rawData.trim()) throw new Error(`Please provide data for section: ${sec.name}`);
           
-          let parsedQs = parseRawCsv(rawData, expectedCols); parsedQs = shuffleQuestions(parsedQs);
+          let parsedQs;
+          try {
+            parsedQs = parseRawCsv(rawData, optionsCount);
+          } catch (secErr) {
+            throw new Error(`[${sec.name}] ${secErr.message}`);
+          }
+          parsedQs = shuffleQuestions(parsedQs);
           if (parsedQs.length !== sec.questions) {
              throw new Error(`${sec.name} expects ${sec.questions} questions, but parsed ${parsedQs.length}.`);
           }
@@ -574,9 +518,9 @@ export default function Dashboard() {
         }
       } else {
         const rawData = sectionData[targetSubject] || '';
-        if (!rawData) throw new Error(`Please provide data for ${targetSubject}`);
+        if (!rawData.trim()) throw new Error(`Please provide data for ${targetSubject}`);
         
-        const parsedQs = parseRawCsv(rawData, expectedCols);
+        const parsedQs = parseRawCsv(rawData, optionsCount);
         const expectedForSec = getExpectedCount();
         if (testMode === 'Sectional' && parsedQs.length !== expectedForSec) {
            throw new Error(`Expected ${expectedForSec} questions, but parsed ${parsedQs.length}.`);
@@ -784,6 +728,7 @@ export default function Dashboard() {
 
   const renderDataInputBlock = (title, count) => {
     const isExpanded = testMode === 'Full' ? expandedSection === title : true;
+    const previewStatus = getSectionPreviewStatus(sectionData[title], count);
     
     return (
       <div key={title} className="glass-panel" style={{ padding: '24px', marginBottom: '16px', transition: 'all 0.3s' }}>
@@ -793,10 +738,22 @@ export default function Dashboard() {
             if (testMode === 'Full') setExpandedSection(isExpanded ? null : title);
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h3 className="geist-pixel" style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{title} ({count} Questions)</h3>
-            {sectionData[title] && sectionData[title].length > 100 && (
-              <CheckCircle2 size={18} style={{ color: 'var(--accent-color)' }} />
+            {previewStatus && (
+              previewStatus.error ? (
+                <span style={{ fontSize: '0.78rem', padding: '2px 10px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                  Parse Issue
+                </span>
+              ) : previewStatus.ok ? (
+                <span style={{ fontSize: '0.78rem', padding: '2px 10px', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.15)', color: '#86efac', border: '1px solid rgba(34, 197, 94, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle2 size={14} /> {previewStatus.count} / {previewStatus.expected} ready
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.78rem', padding: '2px 10px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', color: '#fcd34d', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                  {previewStatus.count} / {previewStatus.expected} parsed
+                </span>
+              )
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -834,6 +791,12 @@ export default function Dashboard() {
               rows={6} 
               style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '0.85rem', background: 'rgba(0,0,0,0.3)' }} 
             />
+            {previewStatus?.error && (
+              <div style={{ marginTop: '10px', padding: '10px 14px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#fca5a5', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{previewStatus.error}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -873,17 +836,18 @@ export default function Dashboard() {
     prompt += `- Difficulty: Easy to Medium (for leisure/casual play)\n`;
     prompt += `- Distractors should be plausible but clearly distinguishable from the correct answer\n\n`;
     prompt += `FORMAT RULES:\n`;
-    prompt += `1. Each question MUST have exactly 4 options\n`;
-    prompt += `2. Only ONE option is correct\n`;
-    prompt += `3. Output STRICTLY as Pipe-Separated Values (|) format\n`;
-    prompt += `4. Do NOT include any conversational text before or after\n`;
-    prompt += `5. Append "###" at the end of EVERY row\n`;
-    prompt += `6. Use this EXACT row format:\n`;
+    prompt += `1. Each question MUST have exactly 4 non-empty options\n`;
+    prompt += `2. Only ONE option is correct. Correct_Option MUST be ONLY a single uppercase letter (A, B, C, or D)\n`;
+    prompt += `3. Output ONLY raw Pipe-Separated Values (|) rows. Do NOT wrap in markdown code fences (\`\`\`) or add intro/outro text\n`;
+    prompt += `4. DELIMITER SAFETY: NEVER use "|" or "###" inside question text, options, or explanations\n`;
+    prompt += `5. MATH/FORMULAS: Use inline LaTeX wrapped in \\( ... \\) (e.g., \\(\\pi r^2\\), \\(\\frac{1}{8}\\)). Do NOT use $$ display math\n`;
+    prompt += `6. Append "###" at the VERY END of EVERY row\n`;
+    prompt += `7. Use this EXACT row format:\n`;
     prompt += `Q||[Question Text]|[Option A]|[Option B]|[Option C]|[Option D]|[Correct Option Letter]|[Detailed Explanation. Tip to remember: ...]###\n\n`;
     prompt += `EXAMPLE:\n`;
-    prompt += `Q||What is 12.5% as a fraction?|1/8|1/6|1/4|1/12|A|12.5% is exactly half of 25% (which is 1/4). Tip to remember: 100 divided by 12.5 is 8.###\n`;
+    prompt += `Q||What is 12.5% as a fraction?|\\(\\frac{1}{8}\\)|\\(\\frac{1}{6}\\)|\\(\\frac{1}{4}\\)|\\(\\frac{1}{12}\\)|A|12.5% is half of 25% (1/4). Tip to remember: 100 divided by 12.5 is 8.###\n`;
     prompt += `Q||What is the chemical symbol for Gold?|Gd|Go|Au|Ag|C|The symbol comes from its Latin name "Aurum". Tip to remember: "A u" return my gold!###\n`;
-    prompt += `Q||Area of a circle with radius r is?|2πr|πr²|πd|2πr²|B|The area is π times the radius squared. Tip to remember: Area is squared (r²), circumference is linear (2πr).###\n\n`;
+    prompt += `Q||Area of a circle with radius \\(r\\) is?|\\(2\\pi r\\)|\\(\\pi r^2\\)|\\(\\pi d\\)|\\(2\\pi r^2\\)|B|The area is \\(\\pi\\) times the radius squared. Tip to remember: Area is squared (\\(r^2\\)), circumference is linear (\\(2\\pi r\\)).###\n\n`;
     prompt += `Generate exactly ${count} questions now. No headers, just the raw PSV rows. Ensure the explanation is detailed and always includes a "Tip to remember".`;
     
     return prompt;
@@ -894,32 +858,7 @@ export default function Dashboard() {
       const raw = quizDuelData.trim();
       if (!raw) { setError('Please paste the AI response first.'); return; }
       
-      const rows = raw.split('###').map(r => r.trim()).filter(r => r.length > 0);
-      const questions = [];
-      
-      for (const row of rows) {
-        const parts = row.split('|');
-        if (parts.length < 8) continue;
-        if (parts[0].trim() !== 'Q') continue;
-        
-        const text = parts[2]?.trim();
-        const optA = parts[3]?.trim();
-        const optB = parts[4]?.trim();
-        const optC = parts[5]?.trim();
-        const optD = parts[6]?.trim();
-        const answer = parts[7]?.trim()?.toUpperCase();
-        const explanation = parts[8]?.trim() || '';
-        
-        if (!text || !optA || !optB || !optC || !optD || !['A','B','C','D'].includes(answer)) continue;
-        
-        questions.push({
-          id: `qd-${questions.length + 1}`,
-          text,
-          options: [optA, optB, optC, optD],
-          answer,
-          explanation
-        });
-      }
+      const questions = parseQuizDuelPsv(raw);
       
       if (questions.length === 0) {
         setError('No valid questions found. Please check the format.');
@@ -1112,23 +1051,7 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <label className="input-label" style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>🤖 AI Prompt</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn btn-primary" onClick={() => { 
-                        const text = generateQuizDuelPrompt();
-                        if (navigator.clipboard && window.isSecureContext) {
-                          navigator.clipboard.writeText(text);
-                        } else {
-                          const textArea = document.createElement("textarea");
-                          textArea.value = text;
-                          textArea.style.position = "absolute";
-                          textArea.style.left = "-999999px";
-                          document.body.appendChild(textArea);
-                          textArea.select();
-                          try { document.execCommand('copy'); } catch (e) { console.error(e); }
-                          document.body.removeChild(textArea);
-                        }
-                        setCopiedSection('quizduel'); 
-                        setTimeout(() => setCopiedSection(null), 2000); 
-                      }} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+                      <button className="btn btn-primary" onClick={() => copyTextWithFallback(generateQuizDuelPrompt(), 'quizduel')} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
                         {copiedSection === 'quizduel' ? '✓ Copied!' : '📋 Copy Prompt'}
                       </button>
                       <button className="btn btn-primary" onClick={() => handleAutoGenerate(null, null, true)} disabled={isGeneratingAI === 'quizduel'} style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--accent-color)', color: '#000', border: 'none' }}>

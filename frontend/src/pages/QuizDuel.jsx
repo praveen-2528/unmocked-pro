@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { formatRichTextHtml, typesetMath } from '../utils/questionUtils';
 import './QuizDuel.css';
 
 const QuizDuel = () => {
@@ -70,9 +71,7 @@ const QuizDuel = () => {
 
   // LaTeX support via MathJax
   useEffect(() => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise().catch((err) => console.error('MathJax error:', err));
-    }
+    return typesetMath();
   }, [currentQuestionIndex, phase, quizData, history]);
 
   // Save match history when game over
@@ -325,7 +324,7 @@ const QuizDuel = () => {
                   </span>
                 </div>
               </div>
-              <div className="qd-review-qtext">{h.question.text}</div>
+              <div className="qd-review-qtext math-inline-force" dangerouslySetInnerHTML={{ __html: formatRichTextHtml(h.question.text) }} />
               <div className="qd-review-options">
                 {h.question.options.map((opt, oi) => {
                   const letter = optionsMap[oi];
@@ -339,7 +338,7 @@ const QuizDuel = () => {
                   return (
                     <div key={oi} className={cls}>
                       <span className="qd-review-opt-letter">{letter}.</span>
-                      <span className="qd-review-opt-text">{opt}</span>
+                      <span className="qd-review-opt-text math-inline-force" dangerouslySetInnerHTML={{ __html: formatRichTextHtml(opt) }} />
                       {markers.length > 0 && <span className="qd-review-markers">{markers.join(' ')}</span>}
                     </div>
                   );
@@ -354,7 +353,7 @@ const QuizDuel = () => {
                 </div>
               )}
               {h.question.explanation && (
-                <div className="qd-review-explanation">💡 {h.question.explanation}</div>
+                <div className="qd-review-explanation math-inline-force" dangerouslySetInnerHTML={{ __html: `💡 ${formatRichTextHtml(h.question.explanation)}` }} />
               )}
             </div>
           ))}
@@ -434,7 +433,7 @@ const QuizDuel = () => {
         </div>
 
         <div className={`qd-question-area ${questionAnim ? 'slide-in' : ''}`}>
-          <p className="qd-question-text">{currentQ.text}</p>
+          <div className="qd-question-text math-inline-force" dangerouslySetInnerHTML={{ __html: formatRichTextHtml(currentQ.text) }} />
         </div>
 
         <div className="qd-options-grid">
@@ -451,7 +450,7 @@ const QuizDuel = () => {
             return (
               <button key={idx} className={cls} onPointerDown={() => handleTap(idx)} disabled={isRevealing || answered}>
                 <span className="qd-opt-letter">{optLetter}</span>
-                <span className="qd-opt-text">{optText}</span>
+                <span className="qd-opt-text math-inline-force" dangerouslySetInnerHTML={{ __html: formatRichTextHtml(optText) }} />
               </button>
             );
           })}

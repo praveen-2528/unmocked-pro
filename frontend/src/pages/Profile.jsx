@@ -8,6 +8,7 @@ import BadgeIcon from '../components/BadgeSVGs';
 import ContributionCalendar from '../components/ContributionCalendar';
 import QuestionRenderer from '../components/QuestionRenderer';
 import PerformanceCharts from '../components/PerformanceCharts';
+import { formatRichTextHtml, typesetMath } from '../utils/questionUtils';
 import { 
     ChevronLeft, Award, Clock, Eye, CheckCircle, XCircle, 
     RefreshCw, Flame, Sparkles, Lock, Trophy, Calendar, BookOpen, X 
@@ -61,6 +62,11 @@ const ProfileInner = () => {
     // Historical Leaderboard states
     const [historicalLeaderboard, setHistoricalLeaderboard] = useState(null);
     const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+    useEffect(() => {
+        if (!selectedExamDetail) return;
+        return typesetMath();
+    }, [selectedExamDetail, reattempts, reattemptMode]);
 
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
@@ -571,7 +577,7 @@ const ProfileInner = () => {
                                                     style={{ cursor: (reattemptMode && !isReattempted) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', padding: '1rem', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '0.75rem' }}
                                                 >
                                                     <span className={cx('opt-letter')} style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px', marginRight: '1rem', fontSize: '0.875rem', fontWeight: '600' }}>{String.fromCharCode(65 + optIdx)}</span>
-                                                    <span className={cx('opt-text')} style={{ flex: 1 }}>{opt}</span>
+                                                    <span className={cx('opt-text', 'math-inline-force')} style={{ flex: 1, minWidth: 0 }} dangerouslySetInnerHTML={{ __html: formatRichTextHtml(opt) }} />
                                                     {!reattemptMode ? (
                                                         <>
                                                             {optIdx === q.correctAnswer && <CheckCircle className={cx('opt-icon', 'success')} style={{ marginLeft: '1rem', color: '#34d399' }} size={16} />}
@@ -628,7 +634,7 @@ const ProfileInner = () => {
                                     {(!reattemptMode || isReattempted) && q.explanation && (
                                         <div className={cx('explanation-box', 'mb-4')} style={{ marginTop: reattemptMode ? '1rem' : '0' }}>
                                             <h5>Explanation</h5>
-                                            <p>{q.explanation}</p>
+                                            <div className="math-inline-force" dangerouslySetInnerHTML={{ __html: formatRichTextHtml(q.explanation) }} />
                                         </div>
                                     )}
                                 </Card>

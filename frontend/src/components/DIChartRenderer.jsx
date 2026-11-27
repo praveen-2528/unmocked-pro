@@ -22,7 +22,20 @@ const TEXT_MUTED = 'rgba(255, 255, 255, 0.45)';
 const TITLE_COLOR = 'rgba(255, 255, 255, 0.9)';
 
 // ── Utility functions ────────────────────────────────────────────────
+function toNumericVal(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  if (v === null || v === undefined) return NaN;
+  const s = String(v).trim();
+  if (!s || s === '?' || s === '-' || s === '—' || s.toLowerCase() === 'na' || s.toLowerCase() === 'n/a') {
+    return NaN;
+  }
+  const cleaned = s.replace(/,/g, '').replace(/%$/, '');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function niceNum(range, round) {
+  if (!Number.isFinite(range) || range <= 0) return 1;
   const exponent = Math.floor(Math.log10(range));
   const fraction = range / Math.pow(10, exponent);
   let niceFraction;
@@ -41,17 +54,28 @@ function niceNum(range, round) {
 }
 
 function getNiceScale(minVal, maxVal, maxTicks = 6) {
-  if (minVal === maxVal) {
-    return { min: 0, max: maxVal * 2 || 10, step: maxVal || 1 };
+  if (!Number.isFinite(minVal) || !Number.isFinite(maxVal)) {
+    return { min: 0, max: 10, step: 2 };
   }
-  const range = niceNum(maxVal - Math.min(0, minVal), false);
-  const step = niceNum(range / (maxTicks - 1), true);
-  const niceMin = Math.floor(Math.min(0, minVal) / step) * step;
-  const niceMax = Math.ceil(maxVal / step) * step;
-  return { min: niceMin, max: niceMax, step };
+  if (minVal === maxVal) {
+    if (minVal === 0) return { min: 0, max: 10, step: 2 };
+    const abs = Math.abs(minVal);
+    const step = niceNum(abs / 2, true) || 1;
+    return minVal > 0
+      ? { min: 0, max: Math.ceil((minVal * 1.2) / step) * step, step }
+      : { min: Math.floor((minVal * 1.2) / step) * step, max: 0, step };
+  }
+  const low = Math.min(0, minVal);
+  const high = Math.max(0, maxVal);
+  const range = niceNum(high - low, false);
+  const step = Math.max(1e-6, niceNum(range / (maxTicks - 1), true));
+  const niceMin = Math.floor(low / step) * step;
+  const niceMax = Math.ceil(high / step) * step;
+  return { min: niceMin, max: niceMax <= niceMin ? niceMin + step : niceMax, step };
 }
 
 function formatNum(n) {
+  if (!Number.isFinite(n)) return '?';
   if (Math.abs(n) >= 1e7) return (n / 1e7).toFixed(1) + 'Cr';
   if (Math.abs(n) >= 1e5) return (n / 1e5).toFixed(1) + 'L';
   if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'K';
@@ -70,7 +94,9 @@ function truncateText(ctx, text, maxWidth) {
 
 // ── Bar Chart ────────────────────────────────────────────────────────
 function drawBarChart(ctx, data, w, h, animProgress) {
-  const padding = { top: 50, right: 20, bottom: 70, left: 65 };
+  const cats = data.categories || [];
+  const series = data.series || [];
+  const padding = { top: 48, right: 20, bottom: series.length > 1 ? 84 : 60, left: 65 };
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
 
@@ -78,14 +104,13 @@ function drawBarChart(ctx, data, w, h, animProgress) {
   ctx.font = 'bold 14px Inter, system-ui, sans-serif';
   ctx.fillStyle = TITLE_COLOR;
   ctx.textAlign = 'center';
-  ctx.fillText(data.title || 'Bar Chart', w / 2, 28);
+  ctx.fillText(truncateText(ctx, data.title || 'Bar Chart', w - 32), w / 2, 26);
 
-  const cats = data.categories || [];
-  const series = data.series || [];
   if (cats.length === 0 || series.length === 0) return;
 
-  // Compute scale
-  let allVals = series.flatMap(s => s.values || []);
+  // Compute scale safely ignoring missing values ("?" or "-")
+  const allVals = series.flatMap(s => (s.values || []).map(toNumericVal)).filter(Number.isFinite);
+  if (allVals.length === 0) return;
   const { min: scaleMin, max: scaleMax, step } = getNiceScale(Math.min(0, ...allVals), Math.max(...allVals));
 
   // Grid + Y axis labels
@@ -109,7 +134,7 @@ function drawBarChart(ctx, data, w, h, animProgress) {
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.fillStyle = TEXT_MUTED;
     ctx.textAlign = 'center';
-    ctx.fillText(data.yLabel, 0, 0);
+    ctx.fillText(truncateText(ctx, data.yLabel, chartH), 0, 0);
     ctx.restore();
   }
 
@@ -124,16 +149,29 @@ function drawBarChart(ctx, data, w, h, animProgress) {
     const groupX = padding.left + ci * groupWidth;
 
     series.forEach((s, si) => {
-      const val = (s.values || [])[ci] || 0;
-      const barH = ((val - scaleMin) / (scaleMax - scaleMin)) * chartH * animProgress;
+      const rawVal = (s.values || [])[ci];
+      const val = toNumericVal(rawVal);
       const x = groupX + barPadding + si * barWidth + barGap / 2;
-      const bw = barWidth - barGap;
+      const bw = Math.max(2, barWidth - barGap);
+
+      if (!Number.isFinite(val)) {
+        if (animProgress > 0.9) {
+          ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+          ctx.fillStyle = '#fbbf24';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText('?', x + bw / 2, padding.top + chartH - 6);
+        }
+        return;
+      }
+
+      const barH = Math.max(0, ((val - scaleMin) / (scaleMax - scaleMin)) * chartH * animProgress);
       const y = padding.top + chartH - barH;
 
       // Bar fill
       ctx.fillStyle = CHART_COLORS[si % CHART_COLORS.length];
       ctx.beginPath();
-      const radius = Math.min(3, bw / 4);
+      const radius = Math.min(3, bw / 4, barH / 2);
       ctx.moveTo(x, padding.top + chartH);
       ctx.lineTo(x, y + radius);
       ctx.quadraticCurveTo(x, y, x + radius, y);
@@ -144,7 +182,7 @@ function drawBarChart(ctx, data, w, h, animProgress) {
       ctx.fill();
 
       // Value on top
-      if (animProgress > 0.9 && bw > 18) {
+      if (animProgress > 0.9 && bw > 16) {
         ctx.font = '10px Inter, system-ui, sans-serif';
         ctx.fillStyle = TEXT_COLOR;
         ctx.textAlign = 'center';
@@ -158,16 +196,17 @@ function drawBarChart(ctx, data, w, h, animProgress) {
     ctx.fillStyle = TEXT_COLOR;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    const label = truncateText(ctx, cat, groupWidth - 4);
-    ctx.fillText(label, groupX + groupWidth / 2, padding.top + chartH + 10);
+    const label = truncateText(ctx, String(cat), groupWidth - 4);
+    ctx.fillText(label, groupX + groupWidth / 2, padding.top + chartH + 8);
   });
 
-  // X-axis label
+  // X-axis title
   if (data.xLabel) {
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.fillStyle = TEXT_MUTED;
     ctx.textAlign = 'center';
-    ctx.fillText(data.xLabel, padding.left + chartW / 2, h - 10);
+    ctx.textBaseline = 'top';
+    ctx.fillText(truncateText(ctx, data.xLabel, chartW), padding.left + chartW / 2, padding.top + chartH + 26);
   }
 
   // Axes
@@ -180,26 +219,33 @@ function drawBarChart(ctx, data, w, h, animProgress) {
   ctx.stroke();
 
   // Legend
-  drawLegend(ctx, series, w, h - 28);
+  drawLegend(ctx, series, w, h - 22);
 }
 
 // ── Stacked Bar Chart ────────────────────────────────────────────────
 function drawStackedBarChart(ctx, data, w, h, animProgress) {
-  const padding = { top: 50, right: 20, bottom: 70, left: 65 };
+  const cats = data.categories || [];
+  const series = data.series || [];
+  const padding = { top: 48, right: 20, bottom: series.length > 1 ? 84 : 60, left: 65 };
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
 
   ctx.font = 'bold 14px Inter, system-ui, sans-serif';
   ctx.fillStyle = TITLE_COLOR;
   ctx.textAlign = 'center';
-  ctx.fillText(data.title || 'Stacked Bar Chart', w / 2, 28);
+  ctx.fillText(truncateText(ctx, data.title || 'Stacked Bar Chart', w - 32), w / 2, 26);
 
-  const cats = data.categories || [];
-  const series = data.series || [];
   if (cats.length === 0 || series.length === 0) return;
 
-  // Compute max stacked value
-  const maxStacked = Math.max(...cats.map((_, ci) => series.reduce((sum, s) => sum + ((s.values || [])[ci] || 0), 0)));
+  // Compute max stacked value safely
+  const stackTotals = cats.map((_, ci) =>
+    series.reduce((sum, s) => {
+      const n = toNumericVal((s.values || [])[ci]);
+      return sum + (Number.isFinite(n) ? n : 0);
+    }, 0)
+  );
+  const maxStacked = Math.max(...stackTotals, 0);
+  if (maxStacked <= 0) return;
   const { min: scaleMin, max: scaleMax, step } = getNiceScale(0, maxStacked);
 
   // Grid
@@ -223,7 +269,9 @@ function drawStackedBarChart(ctx, data, w, h, animProgress) {
     let cumY = 0;
 
     series.forEach((s, si) => {
-      const val = ((s.values || [])[ci] || 0) * animProgress;
+      const n = toNumericVal((s.values || [])[ci]);
+      if (!Number.isFinite(n)) return;
+      const val = n * animProgress;
       const barH = (val / (scaleMax - scaleMin)) * chartH;
       const y = padding.top + chartH - cumY - barH;
 
@@ -236,8 +284,16 @@ function drawStackedBarChart(ctx, data, w, h, animProgress) {
     ctx.fillStyle = TEXT_COLOR;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(truncateText(ctx, cat, barWidth + barGap - 4), x + barWidth / 2, padding.top + chartH + 10);
+    ctx.fillText(truncateText(ctx, String(cat), barWidth + barGap - 4), x + barWidth / 2, padding.top + chartH + 8);
   });
+
+  if (data.xLabel) {
+    ctx.font = '11px Inter, system-ui, sans-serif';
+    ctx.fillStyle = TEXT_MUTED;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(truncateText(ctx, data.xLabel, chartW), padding.left + chartW / 2, padding.top + chartH + 26);
+  }
 
   // Axes
   ctx.strokeStyle = AXIS_COLOR;
@@ -248,25 +304,26 @@ function drawStackedBarChart(ctx, data, w, h, animProgress) {
   ctx.lineTo(w - padding.right, padding.top + chartH);
   ctx.stroke();
 
-  drawLegend(ctx, series, w, h - 28);
+  drawLegend(ctx, series, w, h - 22);
 }
 
 // ── Line Chart ───────────────────────────────────────────────────────
 function drawLineChart(ctx, data, w, h, animProgress) {
-  const padding = { top: 50, right: 20, bottom: 70, left: 65 };
+  const cats = data.categories || [];
+  const series = data.series || [];
+  const padding = { top: 48, right: 24, bottom: series.length > 1 ? 84 : 60, left: 65 };
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
 
   ctx.font = 'bold 14px Inter, system-ui, sans-serif';
   ctx.fillStyle = TITLE_COLOR;
   ctx.textAlign = 'center';
-  ctx.fillText(data.title || 'Line Chart', w / 2, 28);
+  ctx.fillText(truncateText(ctx, data.title || 'Line Chart', w - 32), w / 2, 26);
 
-  const cats = data.categories || [];
-  const series = data.series || [];
   if (cats.length === 0 || series.length === 0) return;
 
-  let allVals = series.flatMap(s => s.values || []);
+  const allVals = series.flatMap(s => (s.values || []).map(toNumericVal)).filter(Number.isFinite);
+  if (allVals.length === 0) return;
   const { min: scaleMin, max: scaleMax, step } = getNiceScale(Math.min(...allVals), Math.max(...allVals));
 
   // Grid
@@ -289,58 +346,52 @@ function drawLineChart(ctx, data, w, h, animProgress) {
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.fillStyle = TEXT_MUTED;
     ctx.textAlign = 'center';
-    ctx.fillText(data.yLabel, 0, 0);
+    ctx.fillText(truncateText(ctx, data.yLabel, chartH), 0, 0);
     ctx.restore();
   }
 
   // Lines
-  const pointSpacing = chartW / Math.max(1, cats.length - 1);
+  const pointSpacing = cats.length > 1 ? chartW / (cats.length - 1) : 0;
+  const getX = (i) => cats.length > 1 ? padding.left + i * pointSpacing : padding.left + chartW / 2;
 
   series.forEach((s, si) => {
     const color = CHART_COLORS[si % CHART_COLORS.length];
-    const vals = s.values || [];
+    const vals = (s.values || []).map(toNumericVal);
     const pointsToDraw = Math.ceil(vals.length * animProgress);
 
-    // Area fill
-    ctx.beginPath();
-    for (let i = 0; i < pointsToDraw; i++) {
-      const x = padding.left + i * pointSpacing;
-      const y = padding.top + chartH - ((vals[i] - scaleMin) / (scaleMax - scaleMin)) * chartH;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    if (pointsToDraw > 0) {
-      const lastX = padding.left + (pointsToDraw - 1) * pointSpacing;
-      ctx.lineTo(lastX, padding.top + chartH);
-      ctx.lineTo(padding.left, padding.top + chartH);
-      ctx.closePath();
-      ctx.fillStyle = color + '12';
-      ctx.fill();
-    }
-
-    // Line stroke
+    // Line stroke (breaking cleanly across missing values)
     ctx.beginPath();
     ctx.strokeStyle = color;
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
+    let penDown = false;
     for (let i = 0; i < pointsToDraw; i++) {
-      const x = padding.left + i * pointSpacing;
+      if (!Number.isFinite(vals[i])) {
+        penDown = false;
+        continue;
+      }
+      const x = getX(i);
       const y = padding.top + chartH - ((vals[i] - scaleMin) / (scaleMax - scaleMin)) * chartH;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      if (!penDown) {
+        ctx.moveTo(x, y);
+        penDown = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
     ctx.stroke();
 
     // Data points
     for (let i = 0; i < pointsToDraw; i++) {
-      const x = padding.left + i * pointSpacing;
+      if (!Number.isFinite(vals[i])) continue;
+      const x = getX(i);
       const y = padding.top + chartH - ((vals[i] - scaleMin) / (scaleMax - scaleMin)) * chartH;
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = '#0f1629';
+      ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = 2;
       ctx.stroke();
 
@@ -357,19 +408,21 @@ function drawLineChart(ctx, data, w, h, animProgress) {
 
   // X-axis labels
   cats.forEach((cat, ci) => {
-    const x = padding.left + ci * pointSpacing;
+    const x = getX(ci);
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.fillStyle = TEXT_COLOR;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(truncateText(ctx, cat, pointSpacing - 4), x, padding.top + chartH + 10);
+    const maxW = cats.length > 1 ? Math.max(32, pointSpacing - 4) : chartW;
+    ctx.fillText(truncateText(ctx, String(cat), maxW), x, padding.top + chartH + 8);
   });
 
   if (data.xLabel) {
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.fillStyle = TEXT_MUTED;
     ctx.textAlign = 'center';
-    ctx.fillText(data.xLabel, padding.left + chartW / 2, h - 10);
+    ctx.textBaseline = 'top';
+    ctx.fillText(truncateText(ctx, data.xLabel, chartW), padding.left + chartW / 2, padding.top + chartH + 26);
   }
 
   // Axes
@@ -381,7 +434,7 @@ function drawLineChart(ctx, data, w, h, animProgress) {
   ctx.lineTo(w - padding.right, padding.top + chartH);
   ctx.stroke();
 
-  drawLegend(ctx, series, w, h - 28);
+  drawLegend(ctx, series, w, h - 22);
 }
 
 // ── Pie Chart ────────────────────────────────────────────────────────
@@ -389,25 +442,29 @@ function drawPieChart(ctx, data, w, h, animProgress) {
   ctx.font = 'bold 14px Inter, system-ui, sans-serif';
   ctx.fillStyle = TITLE_COLOR;
   ctx.textAlign = 'center';
-  ctx.fillText(data.title || 'Pie Chart', w / 2, 28);
+  ctx.fillText(truncateText(ctx, data.title || 'Pie Chart', w - 32), w / 2, 26);
 
   const cats = data.categories || [];
   const series = data.series || [];
   if (cats.length === 0 || series.length === 0) return;
 
-  const vals = series[0]?.values || [];
+  const vals = (series[0]?.values || []).map(v => {
+    const n = toNumericVal(v);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  });
   const total = vals.reduce((a, b) => a + b, 0);
-  if (total === 0) return;
+  if (total <= 0) return;
 
   const cx = w / 2;
-  const cy = (h - 40) / 2 + 40;
-  const radius = Math.min(cx - 30, cy - 50) * 0.75;
+  const cy = (h - 40) / 2 + 34;
+  const radius = Math.max(40, Math.min(cx - 75, cy - 48) * 0.85);
   const innerRadius = radius * 0.35; // donut
 
   let startAngle = -Math.PI / 2;
   const endAnimAngle = -Math.PI / 2 + Math.PI * 2 * animProgress;
 
   vals.forEach((val, i) => {
+    if (val <= 0) return;
     const sliceAngle = (val / total) * Math.PI * 2;
     const endAngle = startAngle + sliceAngle;
 
@@ -422,23 +479,25 @@ function drawPieChart(ctx, data, w, h, animProgress) {
       ctx.closePath();
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = '#0f1629';
+      ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Label
-      if (animProgress > 0.9 && sliceAngle > 0.15) {
+      // Label kept within canvas width
+      if (animProgress > 0.9 && sliceAngle > 0.14) {
         const midAngle = startAngle + sliceAngle / 2;
-        const labelR = radius + 20;
+        const labelR = radius + 16;
         const lx = cx + Math.cos(midAngle) * labelR;
         const ly = cy + Math.sin(midAngle) * labelR;
         const pct = ((val / total) * 100).toFixed(1) + '%';
+        const isLeft = Math.cos(midAngle) < -0.05;
+        const availW = isLeft ? Math.max(40, lx - 10) : Math.max(40, w - lx - 10);
 
         ctx.font = '11px Inter, system-ui, sans-serif';
         ctx.fillStyle = TEXT_COLOR;
-        ctx.textAlign = midAngle > Math.PI / 2 && midAngle < Math.PI * 1.5 ? 'right' : 'left';
+        ctx.textAlign = isLeft ? 'right' : Math.cos(midAngle) > 0.05 ? 'left' : 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${cats[i]} (${pct})`, lx, ly);
+        ctx.fillText(truncateText(ctx, `${cats[i] || ''} (${pct})`, availW), lx, ly);
       }
     }
     startAngle = endAngle;
@@ -446,7 +505,7 @@ function drawPieChart(ctx, data, w, h, animProgress) {
 
   // Center text
   if (animProgress > 0.9) {
-    ctx.font = 'bold 16px Inter, system-ui, sans-serif';
+    ctx.font = 'bold 15px Inter, system-ui, sans-serif';
     ctx.fillStyle = TITLE_COLOR;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -472,7 +531,8 @@ function drawRadarChart(ctx, chartData, w, h, progress) {
   let maxVal = 0;
   series.forEach(s => {
     (s.values || []).forEach(v => {
-      if (typeof v === 'number' && v > maxVal) maxVal = v;
+      const num = toNumericVal(v);
+      if (Number.isFinite(num) && num > maxVal) maxVal = num;
     });
   });
   if (maxVal === 0) maxVal = 10;
@@ -535,8 +595,8 @@ function drawRadarChart(ctx, chartData, w, h, progress) {
     let started = false;
     
     for (let i = 0; i < numAxes; i++) {
-      const val = (s.values || [])[i];
-      if (typeof val !== 'number') continue;
+      const val = toNumericVal((s.values || [])[i]);
+      if (!Number.isFinite(val)) continue;
       
       const r = (val / maxVal) * radius * progress;
       const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
@@ -565,8 +625,8 @@ function drawRadarChart(ctx, chartData, w, h, progress) {
       ctx.stroke();
       
       for (let i = 0; i < numAxes; i++) {
-        const val = (s.values || [])[i];
-        if (typeof val !== 'number') continue;
+        const val = toNumericVal((s.values || [])[i]);
+        if (!Number.isFinite(val)) continue;
         
         const r = (val / maxVal) * radius * progress;
         const angle = (Math.PI * 2 * i) / numAxes - Math.PI / 2;
@@ -597,24 +657,44 @@ function drawLegend(ctx, series, canvasWidth, y) {
   if (series.length <= 1) return;
   ctx.font = '11px Inter, system-ui, sans-serif';
   const items = series.map((s, i) => ({
-    name: s.name || `Series ${i + 1}`,
+    name: truncateText(ctx, s.name || `Series ${i + 1}`, Math.max(80, canvasWidth - 48)),
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const itemWidths = items.map(item => ctx.measureText(item.name).width + 24);
-  const totalWidth = itemWidths.reduce((a, b) => a + b, 0) + (items.length - 1) * 16;
-  let x = (canvasWidth - totalWidth) / 2;
-
+  const itemWidths = items.map(item => ctx.measureText(item.name).width + 22);
+  const gap = 14;
+  const maxRowW = Math.max(120, canvasWidth - 24);
+  const rows = [];
+  let curRow = [];
+  let curW = 0;
   items.forEach((item, i) => {
-    ctx.fillStyle = item.color;
-    ctx.beginPath();
-    ctx.roundRect(x, y - 5, 12, 12, 2);
-    ctx.fill();
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(item.name, x + 18, y + 1);
-    x += itemWidths[i] + 16;
+    const wNeeded = itemWidths[i] + (curRow.length > 0 ? gap : 0);
+    if (curRow.length > 0 && curW + wNeeded > maxRowW) {
+      rows.push({ items: curRow, totalW: curW });
+      curRow = [{ item, width: itemWidths[i] }];
+      curW = itemWidths[i];
+    } else {
+      curRow.push({ item, width: itemWidths[i] });
+      curW += wNeeded;
+    }
+  });
+  if (curRow.length > 0) rows.push({ items: curRow, totalW: curW });
+
+  const startY = y - (rows.length - 1) * 14;
+  rows.forEach((row, ri) => {
+    let x = Math.max(12, (canvasWidth - row.totalW) / 2);
+    const ry = startY + ri * 14;
+    row.items.forEach(({ item, width }) => {
+      ctx.fillStyle = item.color;
+      ctx.beginPath();
+      ctx.roundRect(x, ry - 5, 11, 11, 2);
+      ctx.fill();
+      ctx.fillStyle = TEXT_COLOR;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(item.name, x + 16, ry + 1);
+      x += width + gap;
+    });
   });
 }
 
@@ -640,9 +720,15 @@ const TableRenderer = ({ data }) => {
             {cats.map((cat, ci) => (
               <tr key={ci}>
                 <td className="di-table-cat">{cat}</td>
-                {series.map((s, si) => (
-                  <td key={si}>{(s.values || [])[ci] ?? '-'}</td>
-                ))}
+                {series.map((s, si) => {
+                  const val = (s.values || [])[ci] ?? '-';
+                  const isMissing = val === '?' || val === '-';
+                  return (
+                    <td key={si} className={isMissing ? 'di-table-missing' : ''}>
+                      {val}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -757,8 +843,8 @@ const DIChartRenderer = ({ chartData }) => {
 
   if ((chartData.type || '').toLowerCase() === 'mixed' && Array.isArray(chartData.charts)) {
     return (
-      <div className="di-mixed-container" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        {chartData.title && <div className="di-table-title" style={{ color: 'var(--text-primary)', textAlign: 'center', marginBottom: '-1rem' }}>{chartData.title}</div>}
+      <div className="di-mixed-container">
+        {chartData.title && <div className="di-mixed-title">{chartData.title}</div>}
         {chartData.charts.map((subChart, i) => (
           <DIChartRenderer key={i} chartData={subChart} />
         ))}

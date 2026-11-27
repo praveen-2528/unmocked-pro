@@ -5,10 +5,59 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { socket } from '../socket';
 import Results from '../components/Results';
 import DIChartRenderer from '../components/DIChartRenderer';
+import QuestionRenderer from '../components/QuestionRenderer';
+import { formatRichTextHtml, typesetMath } from '../utils/questionUtils';
 import useChatStore from '../store/useChatStore';
 import '../TestEngine.css';
 
-const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') : '';
+function evaluateDescriptiveAnswer(q, userAns, mc) {
+  if (!userAns || userAns.trim() === '') {
+    return { score: 0, maxScore: mc, feedback: 'No answer provided.', attempted: false };
+  }
+  const variantStrings = (q.answer || '').split(':::');
+  let maxAwarded = 0;
+  let bestHits = 0;
+  let bestTotal = 0;
+  let bestVariantIndex = 1;
+
+  const normalizedAns = ' ' + userAns.toLowerCase().replace(/[^\w\s]/gi, ' ') + ' ';
+  const wordCount = userAns.split(/\s+/).filter(Boolean).length;
+  let lengthPenalty = 1.0;
+  if (wordCount < 50) lengthPenalty = 0.5;
+  if (wordCount < 15) lengthPenalty = 0.1;
+
+  variantStrings.forEach((varStr, idx) => {
+    const keywords = varStr
+      .split(',')
+      .map((k) => k.trim().toLowerCase().replace(/[^\w\s]/gi, ''))
+      .filter(Boolean);
+    let hits = 0;
+    keywords.forEach((kw) => {
+      if (!kw) return;
+      if (
+        normalizedAns.includes(' ' + kw + ' ') ||
+        normalizedAns.includes(' ' + kw + 's ') ||
+        normalizedAns.includes(' ' + kw + 'es ') ||
+        normalizedAns.includes(' ' + kw + 'ed ') ||
+        normalizedAns.includes(' ' + kw + 'ing ')
+      ) {
+        hits++;
+      }
+    });
+    let awarded = keywords.length > 0 ? (hits / keywords.length) * mc : 0;
+    awarded = awarded * lengthPenalty;
+    if (awarded >= maxAwarded) {
+      maxAwarded = awarded;
+      bestHits = hits;
+      bestTotal = keywords.length;
+      bestVariantIndex = idx + 1;
+    }
+  });
+
+  let feedbackStr = `Smart Grader: Best match Variant ${bestVariantIndex} (${bestHits}/${bestTotal} concepts).`;
+  if (lengthPenalty < 1.0) feedbackStr += ` [Penalty applied: Answer too short (${wordCount} words)]`;
+  return { score: maxAwarded, maxScore: mc, feedback: feedbackStr, attempted: true };
+}
 
 export default function TestEngine() {
   const navigate = useNavigate();
@@ -18,6 +67,8 @@ export default function TestEngine() {
   const [testData, setTestData] = useState(null);
   const [isGrading, setIsGrading] = useState(false);
   const [descriptiveFeedback, setDescriptiveFeedback] = useState({});
+  const [zoomScale, setZoomScale] = useState(1);
+  const questionAreaRef = useRef(null);
   
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -81,10 +132,8 @@ export default function TestEngine() {
   }, [room]);
 
   useEffect(() => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise().catch((err) => console.error('MathJax error:', err));
-    }
-  }, [currentQuestionIdx, currentSectionIdx, testData, isSubmitted, friendlyRevealed, showInstructions]);
+    return typesetMath(questionAreaRef.current ? [questionAreaRef.current] : null);
+  }, [currentQuestionIdx, currentSectionIdx, testData, isSubmitted, reviewMode, currentView, friendlyRevealed, showInstructions, zoomScale]);
 
   useEffect(() => {
     if (resultId) {
@@ -113,8 +162,21 @@ export default function TestEngine() {
           const searchParams = new URLSearchParams(window.location.search);
           const isClean = searchParams.get('clean') === 'true';
 
-          setAnswers(isClean ? {} : JSON.parse(data.answers || '{}'));
+          const parsedAnswers = isClean ? {} : JSON.parse(data.answers || '{}');
+          setAnswers(parsedAnswers);
           setStatusMap(isClean ? {} : JSON.parse(data.status_map || '{}'));
+          if (!isClean && parsedData?.sections) {
+            const loadedFeedback = {};
+            parsedData.sections.forEach((sec) => {
+              const mc = sec.marks_correct !== undefined ? sec.marks_correct : (parsedData.blueprint?.marks_correct || 1.0);
+              (sec.questions || []).forEach((q) => {
+                if (q.options && q.options.length === 0) {
+                  loadedFeedback[q.id] = evaluateDescriptiveAnswer(q, parsedAnswers[q.id], mc);
+                }
+              });
+            });
+            setDescriptiveFeedback(loadedFeedback);
+          }
           setScoreData({
             correct: isClean ? 0 : data.correct,
             incorrect: isClean ? 0 : data.incorrect,
@@ -601,66 +663,13 @@ export default function TestEngine() {
         const userAns = answers[q.id];
         
         if (q.options && q.options.length === 0) {
-           if (!userAns || userAns.trim() === '') {
+           const evalRes = evaluateDescriptiveAnswer(q, userAns, mc);
+           if (!evalRes.attempted) {
              unattempted++;
-             newDescriptiveFeedback[q.id] = { score: 0, maxScore: mc, feedback: 'No answer provided.' };
            } else {
-             const variantStrings = q.answer.split(':::');
-             let maxAwarded = 0;
-             let bestHits = 0;
-             let bestTotal = 0;
-             let bestVariantIndex = 1;
-             
-             // SMART MEASURE 1: Normalize user answer (remove punctuation, pad with spaces for boundary checking)
-             const normalizedAns = " " + userAns.toLowerCase().replace(/[^\w\s]/gi, ' ') + " ";
-             
-             // SMART MEASURE 2: Word Count Penalty (prevent 1-sentence keyword spam)
-             const wordCount = userAns.split(/\s+/).filter(w => w).length;
-             let lengthPenalty = 1.0;
-             if (wordCount < 50) lengthPenalty = 0.5; // 50% penalty for short answers under 50 words
-             if (wordCount < 15) lengthPenalty = 0.1; // 90% penalty for just listing keywords without sentences
-
-             variantStrings.forEach((varStr, idx) => {
-               const keywords = varStr.split(',').map(k => k.trim().toLowerCase().replace(/[^\w\s]/gi, '')).filter(k => k);
-               let hits = 0;
-               
-               keywords.forEach(kw => {
-                 if (!kw) return;
-                 // SMART MEASURE 3: Exact match with Word Boundaries (prevents "fund" matching "fundamental")
-                 if (normalizedAns.includes(" " + kw + " ")) {
-                   hits++;
-                 } else {
-                   // SMART MEASURE 4: Suffix tolerance (Basic Stemming for -s, -es, -ed, -ing)
-                   if (normalizedAns.includes(" " + kw + "s ") ||
-                       normalizedAns.includes(" " + kw + "es ") ||
-                       normalizedAns.includes(" " + kw + "ed ") ||
-                       normalizedAns.includes(" " + kw + "ing ")) {
-                     hits++;
-                   }
-                 }
-               });
-               
-               let awarded = keywords.length > 0 ? (hits / keywords.length) * mc : 0;
-               awarded = awarded * lengthPenalty;
-               
-               if (awarded >= maxAwarded) {
-                 maxAwarded = awarded;
-                 bestHits = hits;
-                 bestTotal = keywords.length;
-                 bestVariantIndex = idx + 1;
-               }
-             });
-
-             marks += maxAwarded;
-             let feedbackStr = `Smart Grader: Best match Variant ${bestVariantIndex} (${bestHits}/${bestTotal} concepts).`;
-             if (lengthPenalty < 1.0) feedbackStr += ` [Penalty applied: Answer too short (${wordCount} words)]`;
-             
-             newDescriptiveFeedback[q.id] = { 
-               score: maxAwarded, 
-               maxScore: mc, 
-               feedback: feedbackStr
-             };
+             marks += evalRes.score;
            }
+           newDescriptiveFeedback[q.id] = evalRes;
         } else {
            if (!userAns) {
              unattempted++;
@@ -1019,8 +1028,8 @@ export default function TestEngine() {
         </div>
         <div className="te-header-center">
           <div className="zoom-controls">
-            <button className="zoom-btn">Zoom (+)</button>
-            <button className="zoom-btn">Zoom (-)</button>
+            <button type="button" className="zoom-btn" onClick={() => setZoomScale(s => Math.min(1.4, Number((s + 0.1).toFixed(2))))}>Zoom (+)</button>
+            <button type="button" className="zoom-btn" onClick={() => setZoomScale(s => Math.max(0.85, Number((s - 0.1).toFixed(2))))}>Zoom (-)</button>
           </div>
           <h2>{testData.sections[currentSectionIdx].name.substring(0, 35)}{testData.sections[currentSectionIdx].name.length > 35 ? '...' : ''}</h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -1191,35 +1200,38 @@ export default function TestEngine() {
                   </div>
               </div>
 
-              <div className="te-question-content" style={{ display: 'flex', gap: '20px' }}>
-                  {currentQuestion.passage && (
-                      <div className="te-passage-panel" style={{ flex: '1 1 50%', paddingRight: '20px', borderRight: '1px solid var(--border-color)', maxHeight: '600px', overflowY: 'auto' }}>
-                          <h4 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-dark)' }}>Read the following carefully:</h4>
-                          <div 
-                              className="math-inline-force" 
-                              style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-dark)', whiteSpace: 'pre-wrap' }}
-                              dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.passage) }} 
-                          />
+              <div
+                ref={questionAreaRef}
+                className={`te-question-content ${(currentQuestion.passage || currentQuestion.chartData) ? 'has-split' : ''}`}
+                style={{ fontSize: `${zoomScale}rem` }}
+              >
+                  {(currentQuestion.passage || currentQuestion.chartData) && (
+                      <div className="te-passage-panel">
+                          {currentQuestion.passage && (
+                              <div className="te-passage-block">
+                                  <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--text-dark)' }}>Read the following carefully:</h4>
+                                  <div 
+                                      className="te-passage-body math-inline-force" 
+                                      dangerouslySetInnerHTML={{ __html: formatRichTextHtml(currentQuestion.passage) }} 
+                                  />
+                              </div>
+                          )}
+
+                          {currentQuestion.chartData && (
+                              <div className="te-chart-block" style={{ marginTop: currentQuestion.passage ? '20px' : 0 }}>
+                                  <h4 style={{ marginTop: 0, marginBottom: '12px', color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: '8px' }}>📊 Data Interpretation</h4>
+                                  <DIChartRenderer chartData={currentQuestion.chartData} />
+                              </div>
+                          )}
                       </div>
                   )}
 
-                  {currentQuestion.chartData && (
-                      <div className="te-passage-panel" style={{ flex: '1 1 50%', paddingRight: '20px', borderRight: '1px solid var(--border-color)', maxHeight: '600px', overflowY: 'auto' }}>
-                          <h4 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: '8px' }}>📊 Data Interpretation</h4>
-                          <DIChartRenderer chartData={currentQuestion.chartData} />
-                      </div>
-                  )}
+                  <div className="te-question-panel">
+                      <QuestionRenderer text={currentQuestion.text} theme="light" />
 
-                  <div style={{ flex: (currentQuestion.passage || currentQuestion.chartData) ? '1 1 50%' : '1' }}>
-                      <div 
-                          className="math-inline-force" 
-                          style={{ marginBottom: '1rem', fontSize: '1.1rem', whiteSpace: 'pre-wrap' }}
-                          dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.text) }} 
-                      />
-
-                      <div className="te-options-list">
+                      <div className={`te-options-list ${(currentQuestion.options && currentQuestion.options.length === 0) ? 'is-descriptive' : ''}`}>
                       {currentQuestion.options && currentQuestion.options.length === 0 ? (
-                          <div style={{ width: '100%', marginTop: '1rem' }}>
+                          <div style={{ width: '100%' }}>
                               <textarea
                                   className="te-descriptive-textarea"
                                   placeholder="Type your descriptive answer here..."
@@ -1228,12 +1240,14 @@ export default function TestEngine() {
                                   onChange={(e) => {
                                       if (!isSubmitted && !reviewMode) setAnswers(prev => ({ ...prev, [currentQuestion.id]: e.target.value }));
                                   }}
-                                  style={{ width: '100%', minHeight: '200px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '1rem', resize: 'vertical', background: (isSubmitted || reviewMode) ? '#f8fafc' : 'white' }}
                               />
+                              <div style={{ marginTop: '6px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                                  Word Count: {(answers[currentQuestion.id] || '').split(/\s+/).filter(Boolean).length}
+                              </div>
                               {(reviewMode || isSubmitted) && descriptiveFeedback[currentQuestion.id] && (
                                   <div style={{ marginTop: '1rem', padding: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
                                       <h4 style={{ margin: '0 0 8px 0', color: '#991b1b' }}>AI Grading Results</h4>
-                                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#b91c1c', marginBottom: '8px' }}>
+                                      <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#b91c1c', marginBottom: '8px' }}>
                                           Score: {descriptiveFeedback[currentQuestion.id].score.toFixed(2)} / {descriptiveFeedback[currentQuestion.id].maxScore}
                                       </div>
                                       <p style={{ margin: 0, color: '#7f1d1d' }}>{descriptiveFeedback[currentQuestion.id].feedback}</p>
@@ -1264,9 +1278,10 @@ export default function TestEngine() {
                                    }}
                                >
                                    <input type="radio" className="te-option-radio" checked={isSelected} readOnly />
-                                   <div className="math-inline-force" dangerouslySetInnerHTML={{ __html: formatHtml(opt) }} />
-                                   {isCorrect && <CheckCircle2 size={20} color="#1abc9c" style={{ marginLeft: 'auto' }} />}
-                                   {isWrongSelected && <XCircle size={20} color="#e74c3c" style={{ marginLeft: 'auto' }} />}
+                                   <span className="te-option-badge">{letter}</span>
+                                   <div className="te-option-text math-inline-force" dangerouslySetInnerHTML={{ __html: formatRichTextHtml(opt) }} />
+                                   {isCorrect && <CheckCircle2 size={20} color="#059669" style={{ marginLeft: 'auto', flexShrink: 0 }} />}
+                                   {isWrongSelected && <XCircle size={20} color="#dc2626" style={{ marginLeft: 'auto', flexShrink: 0 }} />}
                                </label>
                            );
                        })
@@ -1280,11 +1295,11 @@ export default function TestEngine() {
                   )}
 
                   {(friendlyRevealed[currentQuestion.id] === true || reviewMode) && (
-                     <div className="animate-fade-in" style={{ marginTop: '2rem', padding: '1rem', background: 'var(--c-accent1)', color: 'white', borderRadius: '4px' }}>
-                       <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <div className="te-explanation-box animate-fade-in">
+                       <h4 style={{ margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46' }}>
                          {currentQuestion.options && currentQuestion.options.length === 0 ? 'Model Answer & Keywords' : 'Explanation'}
                        </h4>
-                       <div className="math-inline-force" style={{ lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatHtml(currentQuestion.explanation || "No explanation provided.") }} />
+                       <div className="math-inline-force" style={{ lineHeight: '1.65' }} dangerouslySetInnerHTML={{ __html: formatRichTextHtml(currentQuestion.explanation || "No explanation provided.") }} />
                      </div>
                   )}
               </div>

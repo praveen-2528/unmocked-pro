@@ -10,6 +10,7 @@ import QuestionRenderer from './QuestionRenderer';
 import BadgeIcon from './BadgeSVGs';
 import ContributionCalendar from './ContributionCalendar';
 import SolutionsView from './SolutionsView';
+import { typesetMath } from '../utils/questionUtils';
 import './UserProfileModal.css';
 
 const UserProfileModal = ({ queryEmail, queryName, onClose }) => {
@@ -31,6 +32,11 @@ const UserProfileModal = ({ queryEmail, queryName, onClose }) => {
     const [selectedBadge, setSelectedBadge] = useState(null);
 
     // Fetch user profile and written exams list
+    useEffect(() => {
+        if (!selectedExamDetail) return;
+        return typesetMath();
+    }, [selectedExamDetail]);
+
     useEffect(() => {
         let url = '/api/users/profile';
         const params = [];

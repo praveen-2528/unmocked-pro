@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Users, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import QuestionRenderer from './QuestionRenderer';
+import DIChartRenderer from './DIChartRenderer';
+import { formatRichTextHtml, typesetMath } from '../utils/questionUtils';
 
-const formatHtml = (text) => text ? text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') : '';
 export default function RoomReview({ sessionId, onBack, currentUser }) {
   const [roomData, setRoomData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,10 +26,8 @@ export default function RoomReview({ sessionId, onBack, currentUser }) {
   }, [sessionId]);
 
   useEffect(() => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise().catch((err) => console.error('MathJax error:', err));
-    }
-  }, [currentQuestionIdx, roomData]);
+    return typesetMath();
+  }, [currentQuestionIdx, roomData, activeTab]);
 
 
   if (loading) return <div style={{ padding: '40px', color: '#fff' }}>Loading room details...</div>;
@@ -195,24 +195,38 @@ export default function RoomReview({ sessionId, onBack, currentUser }) {
               </div>
             </div>
             
-            <div style={{ fontSize: '1.2rem', marginBottom: '24px', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatHtml(allQuestions[currentQuestionIdx].question) }} />
+            {allQuestions[currentQuestionIdx].passage && (
+              <div className="math-inline-force" style={{ marginBottom: '20px', padding: '16px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', lineHeight: '1.6' }} dangerouslySetInnerHTML={{ __html: formatRichTextHtml(allQuestions[currentQuestionIdx].passage) }} />
+            )}
+
+            {allQuestions[currentQuestionIdx].chartData && (
+              <div style={{ marginBottom: '20px' }}>
+                <DIChartRenderer chartData={allQuestions[currentQuestionIdx].chartData} />
+              </div>
+            )}
+
+            <QuestionRenderer text={allQuestions[currentQuestionIdx].text || allQuestions[currentQuestionIdx].question || ''} theme="dark" />
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['A', 'B', 'C', 'D', 'E'].map(opt => {
-                const optText = allQuestions[currentQuestionIdx][`option${opt}`];
+              {['A', 'B', 'C', 'D', 'E'].map((opt, optIdx) => {
+                const qItem = allQuestions[currentQuestionIdx];
+                const optText = Array.isArray(qItem.options) ? qItem.options[optIdx] : qItem[`option${opt}`];
                 if (!optText) return null;
-                const isCorrect = allQuestions[currentQuestionIdx].answer === opt;
+                const isCorrect = qItem.answer === opt;
                 
                 return (
                   <div key={opt} style={{
                     padding: '16px',
                     borderRadius: '8px',
                     border: isCorrect ? '2px solid #4ade80' : '1px solid var(--glass-border)',
-                    background: isCorrect ? 'rgba(74, 222, 128, 0.1)' : 'var(--surface-color)'
+                    background: isCorrect ? 'rgba(74, 222, 128, 0.1)' : 'var(--surface-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
                   }}>
-                    <strong style={{ marginRight: '12px', color: isCorrect ? '#4ade80' : 'var(--text-secondary)' }}>{opt}.</strong>
-                    <span dangerouslySetInnerHTML={{ __html: formatHtml(optText) }} />
-                    {isCorrect && <span style={{ marginLeft: '12px', color: '#4ade80', fontSize: '0.9rem', fontWeight: 'bold' }}>✓ Correct Answer</span>}
+                    <strong style={{ color: isCorrect ? '#4ade80' : 'var(--text-secondary)', flexShrink: 0 }}>{opt}.</strong>
+                    <span className="math-inline-force" style={{ flex: 1, minWidth: 0 }} dangerouslySetInnerHTML={{ __html: formatRichTextHtml(optText) }} />
+                    {isCorrect && <span style={{ marginLeft: 'auto', color: '#4ade80', fontSize: '0.9rem', fontWeight: 'bold', flexShrink: 0 }}>✓ Correct Answer</span>}
                   </div>
                 );
               })}
