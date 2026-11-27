@@ -87,10 +87,10 @@ pm2 startup
 \`\`\`
 
 ### 7. Automatic Hourly Updates on EC2
-To automatically detect new commits pushed to \`main\`, pull safely (without overwriting \`backend/unmocked.db\`, \`backend/.env\`, or \`backend/uploads/\`), update dependencies if needed, and restart PM2 once every hour:
+To automatically detect new commits pushed to \`main\`, pull safely (without overwriting \`backend/unmocked.db\`, \`backend/.env\`, or \`backend/uploads/\`), update dependencies if needed, and restart PM2 once every hour (uses \`cron\` when available, or installs an hourly \`systemd\` timer on Amazon Linux 2023):
 \`\`\`bash
 chmod +x deploy/auto-update.sh deploy/install-cron.sh
-./deploy/install-cron.sh --run-now
+sudo ./deploy/install-cron.sh --run-now
 \`\`\`
 You can check update logs anytime with:
 \`\`\`bash
