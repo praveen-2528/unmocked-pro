@@ -94,6 +94,7 @@ EOF
     if ! systemctl start "${UNIT_NAME}.service"; then
       echo "Initial sync run failed. Latest log lines:" >&2
       tail -n 20 "$LOG_FILE" >&2 || true
+      journalctl -u "${UNIT_NAME}.service" -n 20 --no-pager >&2 || true
       exit 1
     fi
     echo "Ran initial sync check. Latest log lines:"

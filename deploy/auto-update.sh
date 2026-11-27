@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eEuo pipefail
 
 # Resolve repository root from script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,6 +10,7 @@ BUILD_FRONTEND="${BUILD_FRONTEND:-auto}"
 LOG_FILE="${DEPLOY_LOG_FILE:-$SCRIPT_DIR/auto-update.log}"
 LOCK_FILE="${DEPLOY_LOCK_FILE:-/tmp/unmocked-auto-update.lock}"
 export HOME="${HOME:-/root}"
+export GIT_TERMINAL_PROMPT=0
 
 if [ "${1:-}" = "--log" ]; then
   mkdir -p "$(dirname "$LOG_FILE")"
@@ -27,6 +28,8 @@ log() {
   echo "[$(timestamp)] $*"
 }
 
+trap 'rc=$?; log "ERROR: auto-update failed at line $LINENO (exit $rc)"' ERR
+
 REPO_OWNER=""
 if command -v stat >/dev/null 2>&1; then
   REPO_OWNER="$(stat -c '%U' "$APP_DIR" 2>/dev/null || stat -f '%Su' "$APP_DIR" 2>/dev/null || true)"
@@ -38,11 +41,18 @@ add_node_bins_from_home() {
   if [ -d "$user_home/.nvm/versions/node" ]; then
     local d
     for d in "$user_home"/.nvm/versions/node/*/bin; do
-      [ -d "$d" ] && PATH="$d:$PATH"
+      if [ -d "$d" ]; then
+        PATH="$d:$PATH"
+      fi
     done
   fi
-  [ -d "$user_home/.npm-global/bin" ] && PATH="$user_home/.npm-global/bin:$PATH"
-  [ -d "$user_home/.local/bin" ] && PATH="$user_home/.local/bin:$PATH"
+  if [ -d "$user_home/.npm-global/bin" ]; then
+    PATH="$user_home/.npm-global/bin:$PATH"
+  fi
+  if [ -d "$user_home/.local/bin" ]; then
+    PATH="$user_home/.local/bin:$PATH"
+  fi
+  return 0
 }
 
 # Ensure cron / systemd have access to node, npm, and pm2
@@ -57,11 +67,11 @@ add_node_bins_from_home "$HOME"
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
-  # nvm.sh is not strict-mode safe under set -euo pipefail
-  set +euo pipefail
+  # nvm.sh is not strict-mode safe under set -eEuo pipefail
+  set +eEuo pipefail
   # shellcheck disable=SC1090
   . "$NVM_DIR/nvm.sh" || true
-  set -euo pipefail
+  set -eEuo pipefail
 fi
 
 # Prevent overlapping runs
@@ -102,7 +112,10 @@ if ! git_repo rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
-git_repo fetch origin "$BRANCH" --quiet
+if ! git_repo fetch origin "$BRANCH" --quiet; then
+  log "ERROR: git fetch origin $BRANCH failed."
+  exit 1
+fi
 
 LOCAL_SHA="$(git_repo rev-parse HEAD)"
 REMOTE_SHA="$(git_repo rev-parse "origin/$BRANCH")"
